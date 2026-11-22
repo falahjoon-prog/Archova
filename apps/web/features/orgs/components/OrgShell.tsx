@@ -10,6 +10,7 @@ import {
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
 import { BrandingStyle, useBranding, useLogoUrl } from '@/features/branding';
+import { ThemeSwitch } from '@/shared/layout/ThemeSwitch';
 import { InboxLink } from '@/features/notifications';
 import { SearchLink } from '@/features/search';
 import { SupportBanner } from '@/features/support-access';
@@ -143,6 +144,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             <>
               <SearchLink />
               <InboxLink />
+              <ThemeSwitch />
               <span className="app-shell__user">{me.data.user.name}</span>
               <SignOutButton />
             </>
