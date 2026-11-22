@@ -4,6 +4,7 @@ import type { SiteSetting } from '../../payload-types';
 const DEFAULT_LINKS = [
   { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
+  { label: 'What’s new', href: '/changelog' },
   { label: 'Get the app', href: '/app' },
   { label: 'Help centre', href: '/help' },
   { label: 'Request a demo', href: '/demo' },

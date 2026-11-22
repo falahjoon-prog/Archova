@@ -12,6 +12,7 @@ import { SignOutButton } from '@/features/auth';
 import { BrandingStyle, useBranding, useLogoUrl } from '@/features/branding';
 import { InboxLink } from '@/features/notifications';
 import { SearchLink } from '@/features/search';
+import { ProductUpdateBanner } from '@/features/product-updates';
 import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -150,6 +151,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
         >
           <BrandingStyle />
           <SupportBanner />
+          <ProductUpdateBanner />
           {children}
         </OrgAppShell>
       </AssistantScopeProvider>

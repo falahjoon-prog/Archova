@@ -183,3 +183,18 @@ export const supportEvents = backofficeSchema.table('support_events', {
   staffId: uuid('staff_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const productUpdates = backofficeSchema.table('product_updates', {
+  id: uuid('id').primaryKey(),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  body: text('body').notNull().default(''),
+  kind: text('kind').$type<'feature' | 'improvement' | 'fix' | 'notice'>().notNull(),
+  status: text('status').$type<'draft' | 'published' | 'archived'>().notNull().default('draft'),
+  showBanner: boolean('show_banner').notNull().default(false),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  createdBy: uuid('created_by').notNull(),
+  publishedBy: uuid('published_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

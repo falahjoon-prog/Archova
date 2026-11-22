@@ -1,3 +1,5 @@
+'use client';
+
 import { useId, useState, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { cx } from '../lib/cx';

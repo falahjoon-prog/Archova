@@ -510,6 +510,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/product-updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Published product updates (release notes and notices), newest first.
+         * @description Written by the Archova owner in the console. Only published updates appear, never drafts or archived ones.
+         *     The website changelog and the in-app banner both read this.
+         */
+        get: operations["listPublicProductUpdates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/entitlements": {
         parameters: {
             query?: never;
@@ -19536,6 +19557,22 @@ export interface components {
         PlantFlagList: {
             data: components["schemas"]["PlantFlag"][];
         };
+        PublicProductUpdates: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                summary: string;
+                /** @description Plain text; blank lines separate paragraphs. */
+                body: string;
+                /** @enum {string} */
+                kind: "feature" | "improvement" | "fix" | "notice";
+                /** @description Also shown as a dismissible banner in the app. */
+                banner: boolean;
+                /** Format: date-time */
+                publishedAt: string;
+            }[];
+        };
         FeatureFlags: {
             orgId: string;
             flags: {
@@ -30815,6 +30852,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicPriceBook"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPublicProductUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published updates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProductUpdates"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -558,3 +558,20 @@ h2,
     padding: var(--space-6);
   }
 }
+
+/* Changelog (What's new) */
+.changelog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-6);
+  max-width: 44rem;
+}
+.changelog article {
+  border-top: 1px solid var(--c-border-divider);
+  padding-top: var(--space-4);
+}
+.changelog h2 {
+  margin: 0.25rem 0 0.5rem;
+}

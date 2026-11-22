@@ -16,6 +16,8 @@ import {
   type PlanDraftInput,
   type PlanDto,
   type PriceBookDto,
+  type ProductUpdateDto,
+  type ProductUpdateInput,
   type PriceBookPreview,
   type PriceInput,
   type RequestDto,
@@ -184,6 +186,15 @@ export const api = {
     call<{ items: CohortDto[] }>('addCohortMember', { params: { id }, body: { orgId } }),
   removeCohortMember: (id: string, orgId: string) =>
     call<void>('removeCohortMember', { params: { id, orgId } }),
+  productUpdates: () => call<{ items: ProductUpdateDto[] }>('listProductUpdates'),
+  createProductUpdate: (body: ProductUpdateInput) =>
+    call<{ items: ProductUpdateDto[] }>('createProductUpdate', { body }),
+  updateProductUpdate: (id: string, body: ProductUpdateInput) =>
+    call<{ items: ProductUpdateDto[] }>('updateProductUpdate', { params: { id }, body }),
+  publishProductUpdate: (id: string) =>
+    call<{ items: ProductUpdateDto[] }>('publishProductUpdate', { params: { id } }),
+  archiveProductUpdate: (id: string) =>
+    call<{ items: ProductUpdateDto[] }>('archiveProductUpdate', { params: { id } }),
   staff: () =>
     call<{
       items: Array<{

@@ -635,6 +635,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PublicPriceBook' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/public/product-updates:
+    get:
+      operationId: listPublicProductUpdates
+      tags: [platform]
+      x-module: platform
+      x-auth: none
+      summary: Published product updates (release notes and notices), newest first.
+      description: |
+        Written by the Archova owner in the console. Only published updates appear, never drafts or archived ones.
+        The website changelog and the in-app banner both read this.
+      responses:
+        '200':
+          description: Published updates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicProductUpdates' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/entitlements:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -27664,6 +27681,23 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PlantFlag' }
+    PublicProductUpdates:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, title, summary, body, kind, banner, publishedAt]
+            properties:
+              id: { type: string, format: uuid }
+              title: { type: string }
+              summary: { type: string }
+              body: { type: string, description: Plain text; blank lines separate paragraphs. }
+              kind: { type: string, enum: [feature, improvement, fix, notice] }
+              banner: { type: boolean, description: Also shown as a dismissible banner in the app. }
+              publishedAt: { type: string, format: date-time }
     FeatureFlags:
       type: object
       required: [orgId, flags]
