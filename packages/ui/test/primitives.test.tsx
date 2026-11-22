@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Button, FormError, Select, TextField } from '../src';
 
@@ -39,6 +39,23 @@ describe('TextField', () => {
   it('has no aria-describedby without hint or error', () => {
     render(<TextField label="Name" />);
     expect(screen.getByLabelText('Name').hasAttribute('aria-describedby')).toBe(false);
+  });
+});
+
+describe('TextField password toggle', () => {
+  it('shows and hides the password', () => {
+    render(<TextField label="Password" type="password" />);
+    const input = screen.getByLabelText('Password');
+    expect(input.getAttribute('type')).toBe('password');
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(input.getAttribute('type')).toBe('text');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(input.getAttribute('type')).toBe('password');
+  });
+
+  it('has no toggle on other fields', () => {
+    render(<TextField label="Email" type="email" />);
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });
 
