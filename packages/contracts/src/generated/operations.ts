@@ -5693,7 +5693,7 @@ export const operations = {
   listPublicProductUpdates: {
     method: 'GET',
     path: '/v1/public/product-updates',
-    module: "backoffice",
+    module: "platform",
     auth: "none",
     permission: null,
     internal: false,

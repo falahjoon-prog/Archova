@@ -639,7 +639,7 @@ paths:
     get:
       operationId: listPublicProductUpdates
       tags: [platform]
-      x-module: backoffice
+      x-module: platform
       x-auth: none
       summary: Published product updates (release notes and notices), newest first.
       description: |
