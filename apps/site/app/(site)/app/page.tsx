@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { buttonClassName } from '@archova/ui';
-import { ANDROID_TEST_APK_URL } from '../../../src/lib/app-download';
+import { ANDROID_TEST_APK_URL, IOS_TEST_IPA_URL } from '../../../src/lib/app-download';
 
 export const metadata: Metadata = {
   title: 'Get the app',
-  description: 'Download the Archova Android test build for site crews.',
+  description: 'Download the Archova Android and iPhone test builds for site crews.',
 };
 
 export default function GetTheApp() {
@@ -34,11 +34,24 @@ export default function GetTheApp() {
             </ol>
           </li>
           <li className="card">
-            <h2>iPhone and iPad</h2>
-            <p>
-              There is no iOS build yet. Until there is, open Archova in Safari and use Share, then
-              Add to Home Screen.
+            <h2>iPhone and iPad test build</h2>
+            <p className="notice">
+              <strong>Test build.</strong> This is not an App Store release. The file is unsigned,
+              so it has to be installed with a sideloading tool, and an install made with a free
+              Apple ID stops working after 7 days. Not yet tested on a real device.
             </p>
+            <p>
+              <a className={buttonClassName('primary')} href={IOS_TEST_IPA_URL} download>
+                Download the iPhone IPA
+              </a>
+            </p>
+            <ol>
+              <li>Download the file on a computer.</li>
+              <li>Install Sideloadly and sign in with a free Apple ID.</li>
+              <li>Connect your iPhone, drag the IPA into Sideloadly and tap Start.</li>
+              <li>Trust the app in Settings, then General, then VPN and Device Management.</li>
+            </ol>
+            <p>No computer? Open Archova in Safari and use Share, then Add to Home Screen.</p>
           </li>
         </ul>
       </section>
