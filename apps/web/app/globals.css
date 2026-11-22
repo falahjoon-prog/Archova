@@ -641,6 +641,8 @@ button.inbox-link {
 
 /* Tables */
 .table-wrap {
+  /* Containing block for absolutely placed children (visually hidden labels), so they cannot widen the page past the scroll area. */
+  position: relative;
   overflow-x: auto;
 }
 .table {
