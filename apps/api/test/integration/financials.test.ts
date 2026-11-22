@@ -622,7 +622,17 @@ describe('Contracts and payment claims (product/09)', () => {
     expect(read.statusCode).toBe(200);
     expect(read.json().adjudication).toBeNull();
     expect(
-      read.json().timeline.filter((t: { key: string }) => t.key.startsWith('adjudication_a')),
+      read
+        .json()
+        .timeline.filter((t: { key: string }) =>
+          [
+            'adjudication_respondent',
+            'adjudication_application',
+            'adjudication_adjudicator',
+            'adjudication_response',
+            'adjudication_determination',
+          ].includes(t.key),
+        ),
     ).toEqual([]);
     expect(
       (await s.pm.browser.get(`${s.base}/payment-claims/${claim.claim.id}`)).json().adjudication,
