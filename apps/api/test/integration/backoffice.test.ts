@@ -695,6 +695,7 @@ describe('feature flags and pilot cohorts', () => {
     expect(await flags()).toEqual({
       nova_estimating: false,
       photo_progress_flags: false,
+      plant_sms: false,
       subcontractor_prequalification: false,
       subcontractor_wallet: false,
     });
