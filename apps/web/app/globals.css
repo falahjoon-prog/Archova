@@ -390,10 +390,10 @@ button.inbox-link {
     min-width: 44px;
     padding: 0;
   }
-  .sign-out__label {
+  .sign-out__button .sign-out__label {
     display: none;
   }
-  .sign-out__icon {
+  .sign-out__button .sign-out__icon {
     display: block;
   }
   /* Narrow padding so the logo, Ask Nova, inbox and Sign out all fit on one row at 375px. */
