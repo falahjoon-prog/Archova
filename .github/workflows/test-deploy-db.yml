@@ -62,7 +62,14 @@ jobs:
       - name: Apply migrations
         env:
           MIGRATOR_DATABASE_URL: postgres://app_migrator.${{ env.PROJECT_REF }}:${{ env.PW_app_migrator }}@${{ env.POOLER_HOST }}:5432/postgres?sslmode=require
-        run: pnpm db:compose && pnpm db:migrate
+        run: |
+          pnpm db:compose
+          # The pooler can keep serving a role's previous password for a little while after it changes, so retry.
+          for i in 1 2 3 4 5 6; do
+            pnpm db:migrate && exit 0
+            echo "migrate attempt $i failed; waiting"; sleep 30
+          done
+          exit 1
       - name: Load demo sample data
         if: ${{ inputs.seed }}
         env:
