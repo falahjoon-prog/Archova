@@ -33,7 +33,7 @@ async function signUpReturningId(email: string) {
 }
 beforeAll(async () => {
   t = await createTestContext({
-    googleSignInFetch: fakeFetch,
+    externalSignInFetch: fakeFetch,
     env: {
       API_GOOGLE_SIGNIN_CLIENT_ID: CLIENT_ID,
       API_GOOGLE_SIGNIN_CLIENT_SECRET: 'secret',
@@ -75,7 +75,7 @@ async function signInWithGoogle(
 describe('Continue with Google', () => {
   it('reports that Google is switched on', async () => {
     const res = await new Browser(t.app).get('/v1/auth/providers');
-    expect(res.json()).toEqual({ google: true });
+    expect(res.json()).toEqual({ google: true, microsoft: false });
   });
 
   it('creates an account on first sign-in, then signs the same person back in', async () => {
@@ -172,7 +172,7 @@ describe('Continue with Google', () => {
       tx.execute(sql`update identity.users set email_verified_at = now() where id = ${userId}`),
     );
     const res = await signInWithGoogle(new Browser(t.app), { sub: `sub-${email}`, email });
-    expect(String(res.headers.location)).toContain('error=google_link_requires_sign_in');
+    expect(String(res.headers.location)).toContain('error=google_failed');
     expect(res.cookies.find((c) => c.name === '__Host-sid')).toBeUndefined();
     const login = await new Browser(t.app).post('/v1/auth/login', {
       email,

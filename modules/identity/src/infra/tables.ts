@@ -38,7 +38,7 @@ export const sessions = identity.table('sessions', {
   userId: uuid('user_id').notNull(),
   client: text('client').$type<'web' | 'ios' | 'android' | 'api'>().notNull(),
   authMethod: text('auth_method')
-    .$type<'password' | 'passkey' | 'sso' | 'oauth' | 'google'>()
+    .$type<'password' | 'passkey' | 'sso' | 'oauth' | 'google' | 'microsoft'>()
     .notNull(),
   authTime: timestamp('auth_time', { withTimezone: true }).notNull(),
   ip: text('ip'),
@@ -81,7 +81,7 @@ export const oauthCodes = identity.table('oauth_codes', {
   redirectUri: text('redirect_uri').notNull(),
   codeChallenge: text('code_challenge').notNull(),
   authMethod: text('auth_method')
-    .$type<'password' | 'passkey' | 'sso' | 'oauth' | 'google'>()
+    .$type<'password' | 'passkey' | 'sso' | 'oauth' | 'google' | 'microsoft'>()
     .notNull(),
   authTime: timestamp('auth_time', { withTimezone: true }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -177,9 +177,11 @@ export const appTokens = identity.table('app_tokens', {
 export const externalIdentities = identity.table('external_identities', {
   id: uuid('id').primaryKey(),
   userId: uuid('user_id').notNull(),
-  provider: text('provider').$type<'google'>().notNull(),
+  provider: text('provider').$type<'google' | 'microsoft'>().notNull(),
   subject: text('subject').notNull(),
   email: citext('email').notNull(),
+  /** Microsoft: the tenant the sign-in came from (the `sub` is only unique per app registration). */
+  tenantId: text('tenant_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
 });

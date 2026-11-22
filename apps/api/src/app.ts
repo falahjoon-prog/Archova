@@ -59,8 +59,8 @@ export interface AppDeps {
   webhookTransport?: WebhookTransport;
   /** Replaces global fetch for Xero and MYOB calls, so tests never reach the network. */
   accountingFetch?: (url: string, init?: RequestInit) => Promise<Response>;
-  /** Replaces global fetch for the Google sign-in token exchange, so tests never reach Google. */
-  googleSignInFetch?: typeof fetch;
+  /** Replaces global fetch for the Google and Microsoft sign-in token exchanges, so tests never reach Google. */
+  externalSignInFetch?: typeof fetch;
   /** Hands the loaded modules to the caller, e.g. tests that drive import commands (X49) directly. */
   onModules?: (modules: Modules) => void;
 }
@@ -100,12 +100,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         privateJwk: config.jwtPrivateJwk,
         webSignInUrl: config.webSignInUrl,
         partnerApps: { enabled: config.partnerAppsEnabled },
-        googleSignIn: config.googleSignIn
-          ? {
-              ...config.googleSignIn,
-              ...(deps.googleSignInFetch ? { fetch: deps.googleSignInFetch } : {}),
-            }
-          : null,
+        externalSignIn: Object.fromEntries(
+          (['google', 'microsoft'] as const).map((p) => [
+            p,
+            config.externalSignIn[p]
+              ? {
+                  ...config.externalSignIn[p],
+                  ...(deps.externalSignInFetch ? { fetch: deps.externalSignInFetch } : {}),
+                }
+              : null,
+          ]),
+        ),
         auditPepper: config.auditPepper ?? DEV_AUDIT_PEPPER,
       },
       files: {
