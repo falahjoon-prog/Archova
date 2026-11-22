@@ -47,6 +47,20 @@ services:
     envVars:
       - key: WEB_API_INTERNAL_URL
         value: https://archova-api.onrender.com
+  - type: web
+    name: archova-site
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile.render-site
+    envVars:
+      - key: SITE_ORIGIN
+        value: https://archova-site.onrender.com
+      - key: SITE_APP_URL
+        value: https://archova-web.onrender.com
+      - key: SITE_PAYLOAD_SECRET
+        value: archova-test-site-secret-not-for-production
+
   - type: keyvalue
     name: archova-cache
     plan: free
