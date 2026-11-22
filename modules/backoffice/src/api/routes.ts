@@ -12,6 +12,7 @@ import type { CustomerService } from '../application/customers';
 import type { FlagService } from '../application/flags';
 import type { SupportAccessService } from '../application/support-access';
 import type { HoldService } from '../application/holds';
+import type { ProductUpdateService } from '../application/product-updates';
 import type { OrgActionService } from '../application/org-actions';
 import type { RequestService } from '../application/requests';
 import type { StaffContext, StaffService } from '../application/staff';
@@ -49,6 +50,7 @@ export interface InternalDeps {
   orgActions: OrgActionService;
   support: SupportAccessService;
   holds: HoldService;
+  productUpdates: ProductUpdateService;
 }
 
 const me = (input: { staff: StaffContext | null }) => {
@@ -271,12 +273,20 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
       await d.flags.removeMember(me(i), i.params.id, i.params.orgId);
       return { status: 204 };
     },
+    listProductUpdates: async () => ok({ items: await d.productUpdates.list() }),
+    createProductUpdate: async (i) =>
+      ok({ items: await d.productUpdates.create(me(i).staffId, i.body) }, 201),
+    updateProductUpdate: async (i) =>
+      ok({ items: await d.productUpdates.update(i.params.id, i.body) }),
+    publishProductUpdate: async (i) =>
+      ok({ items: await d.productUpdates.publish(me(i).staffId, i.params.id) }),
+    archiveProductUpdate: async (i) => ok({ items: await d.productUpdates.archive(i.params.id) }),
     listStaff: async () => ok({ items: await d.staff.list() }),
   };
 }
 
 /** What the org's own signed-in members may ask: which flags are on for them (never the rules behind them). */
-export function customerRoutes(deps: { flags: FlagService }) {
+export function customerRoutes(deps: { flags: FlagService; productUpdates: ProductUpdateService }) {
   return defineRoutes({
     getFeatureFlags: async (input) => {
       const tenant = requireTenant(input);
@@ -286,5 +296,11 @@ export function customerRoutes(deps: { flags: FlagService }) {
         headers: { 'cache-control': 'private, no-store' },
       };
     },
+    // Published only, and nothing about who wrote them. The website changelog and the in-app banner both read this.
+    listPublicProductUpdates: async () => ({
+      status: 200,
+      body: { items: await deps.productUpdates.listPublic() },
+      headers: { 'cache-control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' },
+    }),
   });
 }

@@ -89,6 +89,57 @@ describe('public price book', () => {
   });
 });
 
+describe('product updates', () => {
+  const publicList = async () =>
+    (
+      await t.app.inject({
+        method: 'GET',
+        url: '/v1/public/product-updates',
+        headers: { host: 'app.archova.test' },
+      })
+    ).json() as { items: Array<{ id: string; title: string; banner: boolean }> };
+
+  it('lets only the Owner write, and serves only published updates to anyone', async () => {
+    const sales = await staff(['sales']);
+    expect((await sales.get('/product-updates')).statusCode).toBe(403);
+
+    const owner = await staff(['owner']);
+    const title = `Site diary upgrades ${Date.now()}`;
+    const made = await owner.post('/product-updates', {
+      title,
+      summary: 'Faster entries.',
+      kind: 'feature',
+      showBanner: true,
+    });
+    expect(made.statusCode).toBe(201);
+    const id = (made.json() as { items: Array<{ id: string; title: string }> }).items.find(
+      (u) => u.title === title,
+    )!.id;
+
+    // A draft is invisible outside the console.
+    expect((await publicList()).items.some((u) => u.id === id)).toBe(false);
+
+    expect((await owner.post(`/product-updates/${id}/publish`)).statusCode).toBe(200);
+    const live = (await publicList()).items.find((u) => u.id === id);
+    expect(live).toMatchObject({ title, banner: true });
+    // Publishing twice is a conflict, not a silent no-op.
+    expect((await owner.post(`/product-updates/${id}/publish`)).statusCode).toBe(409);
+
+    expect((await owner.post(`/product-updates/${id}/archive`)).statusCode).toBe(200);
+    expect((await publicList()).items.some((u) => u.id === id)).toBe(false);
+    expect(
+      (
+        await owner.put(`/product-updates/${id}`, {
+          title,
+          summary: 'Edited.',
+          kind: 'fix',
+          showBanner: false,
+        })
+      ).statusCode,
+    ).toBe(409);
+  });
+});
+
 describe('staff sign-in and realms', () => {
   it('signs in, reads me, and rejects a wrong password', async () => {
     const c = await staff(['owner']);

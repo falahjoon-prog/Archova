@@ -5690,6 +5690,18 @@ export const operations = {
     query: null,
     body: null,
   },
+  listPublicProductUpdates: {
+    method: 'GET',
+    path: '/v1/public/product-updates',
+    module: "backoffice",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
   getEntitlements: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/entitlements',

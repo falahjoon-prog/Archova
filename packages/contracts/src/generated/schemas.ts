@@ -10454,6 +10454,19 @@ export const PublicPriceBookSchema = z.object({
 });
 export type PublicPriceBook = z.infer<typeof PublicPriceBookSchema>;
 
+export const PublicProductUpdatesSchema = z.object({
+  "items": z.array(z.object({
+  "id": z.string(),
+  "title": z.string(),
+  "summary": z.string(),
+  "body": z.string(),
+  "kind": z.enum(["feature", "improvement", "fix", "notice"]),
+  "banner": z.boolean(),
+  "publishedAt": z.string().datetime({ offset: true }),
+})),
+});
+export type PublicProductUpdates = z.infer<typeof PublicProductUpdatesSchema>;
+
 export const PublishDrawingSetRequestSchema = z.object({
   "confirmNewSheets": z.boolean().optional(),
   "reasons": z.array(z.object({
