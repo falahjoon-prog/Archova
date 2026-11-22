@@ -24,11 +24,10 @@ COPY modules modules
 COPY packages packages
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile \
-      --filter '@archova/api...' --filter '@archova/web...' --filter '@archova/worker...' --filter '@archova/tools' --filter archova
+      --filter '@archova/api...' --filter archova
 
 COPY . .
-RUN pnpm turbo run build --filter=@archova/api --filter=@archova/web --filter=@archova/worker \
- && pnpm --filter @archova/tools exec node db/build.mjs
+RUN pnpm turbo run build --env-mode=loose --filter=@archova/api
 
 # The packages left outside the bundle (apps/api/build.mjs), at the versions the lockfile resolved.
 WORKDIR /out/api
@@ -43,7 +42,7 @@ ADD --checksum=sha256:90a6f1a7978a1b1b096dca6c57511ca48d3b8cf052f8e704baf358f34e
 
 # Supabase's root certificate, appended to the trusted bundle so the api can verify the test database's TLS.
 ADD https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt /out/supabase-ca.crt
-RUN cat /out/supabase-ca.crt >> /out/rds-ca.pem
+RUN cat /out/supabase-ca.crt >> /out/rds-ca.pem && chmod 644 /out/rds-ca.pem
 
 # --- api ----------------------------------------------------------------------------------------------------------
 FROM ${RUNTIME_IMAGE} AS api
