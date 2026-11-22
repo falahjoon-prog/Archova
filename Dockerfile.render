@@ -1,0 +1,55 @@
+# Render build for the free online test deployment: the production Dockerfile up to the api stage, so api is the final
+# stage Render builds. Keep in step with Dockerfile.
+# syntax=docker/dockerfile:1.7
+# Production images for api, web, worker, ai-worker and migrate (infrastructure/03 §2). Built from the repo root for linux/arm64:
+#   docker buildx build --platform linux/arm64 --target api .
+# Images run as non-root on distroless Node 22 and trust the Amazon RDS CA bundle for TLS to Aurora.
+
+ARG NODE_IMAGE=node:22-slim
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian13:nonroot
+
+# --- Install and build ------------------------------------------------------------------------------------------
+FROM ${NODE_IMAGE} AS build
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true NEXT_TELEMETRY_DISABLED=1 TURBO_TELEMETRY_DISABLED=1
+RUN corepack enable
+WORKDIR /repo
+
+# Manifests first so the dependency layer is cached until a lockfile or package.json changes.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY apps/worker/package.json apps/worker/
+COPY tools/package.json tools/
+COPY modules modules
+COPY packages packages
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile \
+      --filter '@archova/api...' --filter '@archova/web...' --filter '@archova/worker...' --filter '@archova/tools' --filter archova
+
+COPY . .
+RUN pnpm turbo run build --filter=@archova/api --filter=@archova/web --filter=@archova/worker \
+ && pnpm --filter @archova/tools exec node db/build.mjs
+
+# The packages left outside the bundle (apps/api/build.mjs), at the versions the lockfile resolved.
+WORKDIR /out/api
+RUN ARGON2=$(node -p "require('/repo/apps/api/node_modules/@node-rs/argon2/package.json').version") \
+ && PDFJS=$(node -p "require('/repo/modules/ai/node_modules/pdfjs-dist/package.json').version") \
+ && echo '{"name":"api-runtime","private":true,"type":"module"}' > package.json \
+ && npm install --omit=dev --no-audit --no-fund "@node-rs/argon2@${ARGON2}" "pdfjs-dist@${PDFJS}" \
+ && cp -r /repo/apps/api/dist ./dist
+
+ADD --checksum=sha256:90a6f1a7978a1b1b096dca6c57511ca48d3b8cf052f8e704baf358f34ea2f21b \
+    https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /out/rds-ca.pem
+
+# Supabase's root certificate, appended to the trusted bundle so the api can verify the test database's TLS.
+ADD https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt /out/supabase-ca.crt
+RUN cat /out/supabase-ca.crt >> /out/rds-ca.pem
+
+# --- api ----------------------------------------------------------------------------------------------------------
+FROM ${RUNTIME_IMAGE} AS api
+WORKDIR /app
+ENV NODE_ENV=production NODE_EXTRA_CA_CERTS=/etc/ssl/rds-ca.pem
+COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
+COPY --from=build /out/api /app
+EXPOSE 4000
+CMD ["--enable-source-maps", "dist/server.js"]

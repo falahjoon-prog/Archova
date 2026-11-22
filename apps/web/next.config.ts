@@ -104,7 +104,8 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    if (!isDev) return [];
+    // Dev stands in for the edge path rule; a deployment with no edge (the free test deployment) sets WEB_API_INTERNAL_URL at build.
+    if (!isDev && !process.env.WEB_API_INTERNAL_URL) return [];
     return [
       { source: '/v1/:path*', destination: `${apiInternalUrl}/v1/:path*` },
       { source: '/.well-known/:path*', destination: `${apiInternalUrl}/.well-known/:path*` },

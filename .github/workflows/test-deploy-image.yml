@@ -1,0 +1,38 @@
+# Builds the api and migrate images for the free online test deployment (Render pulls them from GHCR).
+# Manual or on pushes that touch this file. Not part of the production pipeline (images.yml).
+name: Test deploy image
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/test-deploy-image.yml']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Image ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [api, migrate]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ghcr.io/tradeaiapps-collab/archova-${{ matrix.target }}:test
