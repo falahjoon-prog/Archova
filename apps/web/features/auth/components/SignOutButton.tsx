@@ -2,6 +2,7 @@
 
 import { webRoutes } from '@archova/routes';
 import { Button } from '@archova/ui';
+import { LogOut } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { isApiError } from '@/shared/lib/errors';
 import { useLogout } from '../hooks/useAuthMutations';
@@ -14,6 +15,8 @@ export function SignOutButton() {
     <div className="sign-out">
       <Button
         variant="secondary"
+        aria-label="Sign out"
+        className="sign-out__button"
         loading={logout.isPending}
         onClick={() =>
           logout.mutate(undefined, {
@@ -25,7 +28,8 @@ export function SignOutButton() {
           })
         }
       >
-        Sign out
+        <LogOut className="sign-out__icon" size={20} strokeWidth={1.5} aria-hidden="true" />
+        <span className="sign-out__label">Sign out</span>
       </Button>
       {logout.isError && !isApiError(logout.error, 401) ? (
         <ErrorAlert error={logout.error} />

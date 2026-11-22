@@ -39,6 +39,7 @@ jobs:
           java-version: '17'
       # GitHub-hosted runners already have the Android SDK; this installs it on a self-hosted one.
       - uses: android-actions/setup-android@v3
+        if: runner.environment == 'self-hosted'
       - run: pnpm install --frozen-lockfile
       - name: Generate the native Android project
         working-directory: apps/mobile
