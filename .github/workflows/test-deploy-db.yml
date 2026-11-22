@@ -5,6 +5,9 @@
 name: Test deploy database
 
 on:
+  push:
+    branches: [claude/project-thread-z64rby]
+    paths: ['.github/workflows/test-deploy-db.yml']
   workflow_dispatch:
     inputs:
       seed:
