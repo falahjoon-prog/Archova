@@ -90,8 +90,9 @@ describe('financials.trust-reminders', () => {
       );
     });
 
-    expect((await run(t.orgId)).created).toBe(3);
+    const first = await run(t.orgId);
     const rows = await inbox(t.orgId, t.user);
+    expect(first.created, rows.map((r) => r.title).join(' | ')).toBe(3);
     expect(rows.map((r) => r.title)).toEqual([
       'C-001 Trade 1: retention trust account not recorded',
       'C-002 Trade 2: retention release is due',
