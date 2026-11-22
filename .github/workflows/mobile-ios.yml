@@ -5,14 +5,19 @@
 name: Mobile iOS (unsigned)
 
 on:
+  # Temporary: a new workflow cannot be started by hand until it is on main, so pushing a change to this file on the
+  # branch below also starts it, using the addresses in the env block. Remove once this is merged.
+  push:
+    branches: [claude/project-thread-puapeq]
+    paths: [.github/workflows/mobile-ios.yml]
   workflow_dispatch:
     inputs:
       api_url:
         description: API origin the app talks to
-        required: true
+        required: false
       app_origin:
         description: Web app origin that hosts the sign-in page
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -24,8 +29,8 @@ jobs:
     timeout-minutes: 90
     env:
       APP_VARIANT: preview
-      EXPO_PUBLIC_API_URL: ${{ inputs.api_url }}
-      EXPO_PUBLIC_APP_ORIGIN: ${{ inputs.app_origin }}
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url || 'https://answers-sodium-alternate-automation.trycloudflare.com' }}
+      EXPO_PUBLIC_APP_ORIGIN: ${{ inputs.app_origin || 'https://answers-sodium-alternate-automation.trycloudflare.com' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
