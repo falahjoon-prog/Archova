@@ -6,7 +6,6 @@ const DEFAULT_LINKS = [
   { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
   { label: 'Help', href: '/help' },
-  { label: 'Get the app', href: '/get-the-app' },
 ];
 
 const APP_URL = process.env.SITE_APP_URL ?? 'https://app.archova.com.au';
