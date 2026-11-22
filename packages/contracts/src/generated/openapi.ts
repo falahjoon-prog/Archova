@@ -14158,6 +14158,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/adjudication": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Record what has happened in adjudication on a claim (builder staff).
+         * @description Send the whole record each time, with the `version` you read as `expectedVersion` (a different version is a conflict); a field left out is cleared. Each change is kept on the event trail with its before and after, so a wrong date is corrected by sending it again. Dates for things that happened can't be in the future or out of order. The adjudicator's response and determination due dates are typed in from the adjudicator's notice, never calculated. The claim's `timeline` shows the steps that follow.
+         */
+        put: operations["recordClaimAdjudication"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence": {
         parameters: {
             query?: never;
@@ -24976,6 +25000,8 @@ export interface components {
             data: components["schemas"]["PaymentClaim"][];
         };
         PaymentClaimDetail: {
+            /** @description What staff recorded once adjudication began. Null until something is recorded. */
+            adjudication?: components["schemas"]["ClaimAdjudication"] | null;
             /** @description The claim's SOPA path from service to payment and the adjudication windows that apply now. Empty for a claim that is not valid. Dates come from the stored claim dates and the rule row in force on the service date. */
             timeline: components["schemas"]["ClaimTimelineStep"][];
             /** @description The NSW subcontractor's statement linked to this claim, if one was recorded. */
@@ -24988,7 +25014,7 @@ export interface components {
         };
         ClaimTimelineStep: {
             /** @enum {string} */
-            key: "served" | "schedule" | "payment" | "adjudication_schedule_less" | "adjudication_unpaid" | "adjudication_notice" | "adjudication_apply";
+            key: "served" | "schedule" | "payment" | "adjudication_schedule_less" | "adjudication_unpaid" | "adjudication_notice" | "adjudication_apply" | "adjudication_respondent" | "adjudication_application" | "adjudication_adjudicator" | "adjudication_response" | "adjudication_determination";
             label: string;
             /**
              * Format: date
@@ -25014,6 +25040,56 @@ export interface components {
             note: string | null;
             /** Format: date-time */
             recordedAt: string;
+        };
+        ClaimAdjudication: {
+            /** Format: date */
+            noticeServedOn: string | null;
+            /** Format: date */
+            applicationLodgedOn: string | null;
+            nominatingAuthority: string | null;
+            adjudicatorName: string | null;
+            /** Format: date */
+            adjudicatorAppointedOn: string | null;
+            /** Format: date */
+            responseDueOn: string | null;
+            /** Format: date */
+            responseLodgedOn: string | null;
+            /** Format: date */
+            determinationDueOn: string | null;
+            /** Format: date */
+            determinedOn: string | null;
+            adjudicatedAmount: components["schemas"]["FinancialsMoney"] | null;
+            /** @enum {string|null} */
+            outcome: "upheld" | "part_upheld" | "dismissed" | "withdrawn" | "settled" | null;
+            notes: string | null;
+            /** @description Send this back as `expectedVersion` when changing the record. */
+            version?: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RecordClaimAdjudicationRequest: {
+            /** @description The `version` of the record being changed. Required when a record exists. */
+            expectedVersion?: number;
+            /** Format: date */
+            noticeServedOn?: string | null;
+            /** Format: date */
+            applicationLodgedOn?: string | null;
+            nominatingAuthority?: string | null;
+            adjudicatorName?: string | null;
+            /** Format: date */
+            adjudicatorAppointedOn?: string | null;
+            /** Format: date */
+            responseDueOn?: string | null;
+            /** Format: date */
+            responseLodgedOn?: string | null;
+            /** Format: date */
+            determinationDueOn?: string | null;
+            /** Format: date */
+            determinedOn?: string | null;
+            adjudicatedAmount?: components["schemas"]["FinancialsMoney"] | null;
+            /** @enum {string|null} */
+            outcome?: "upheld" | "part_upheld" | "dismissed" | "withdrawn" | "settled" | null;
+            notes?: string | null;
         };
         RecordClaimStatementRequest: {
             /**
@@ -53352,6 +53428,35 @@ export interface operations {
         };
         responses: {
             /** @description The claim with its statement linked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentClaimDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordClaimAdjudication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordClaimAdjudicationRequest"];
+            };
+        };
+        responses: {
+            /** @description The claim with its adjudication record */
             200: {
                 headers: {
                     [name: string]: unknown;

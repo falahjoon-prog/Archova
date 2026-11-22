@@ -7,6 +7,7 @@ import {
 import type { SopaState } from '@archova/domain';
 import { compareLocalDates, localDateOf, type LocalDate } from '@archova/time';
 import { PUBLIC_HOLIDAYS } from './holidays';
+import type { AdjudicationFacts } from './adjudication';
 import { percentOf } from './money';
 
 // The claim-to-schedule-to-adjudication timeline shown on a claim. Pure: built from the dates stored on the claim,
@@ -24,7 +25,12 @@ export interface TimelineStep {
     | 'adjudication_schedule_less'
     | 'adjudication_unpaid'
     | 'adjudication_notice'
-    | 'adjudication_apply';
+    | 'adjudication_apply'
+    | 'adjudication_respondent'
+    | 'adjudication_application'
+    | 'adjudication_adjudicator'
+    | 'adjudication_response'
+    | 'adjudication_determination';
   label: string;
   /** The deadline, when the step has one. */
   dueOn: LocalDate | null;
@@ -46,6 +52,8 @@ export interface TimelineInput {
   paidCents: number;
   today: LocalDate;
   timeZone: string;
+  /** What staff have recorded once adjudication began. Optional: the timeline works without it. */
+  adjudication?: AdjudicationFacts | null;
 }
 
 /** Days that count as "soon" for a deadline. */
@@ -67,6 +75,7 @@ export function claimTimeline(input: TimelineInput): TimelineStep[] {
     ? ruleInForce(SOPA_RULES, input.ruleState as SopaState, input.servedOn)
     : null;
   const holidays = rule ? PUBLIC_HOLIDAYS[rule.state] : new Set<string>();
+  const adj = input.adjudication ?? null;
   const steps: TimelineStep[] = [
     {
       key: 'served',
@@ -144,17 +153,36 @@ export function claimTimeline(input: TimelineInput): TimelineStep[] {
       holidays,
       paymentDueOn: input.paymentDueOn,
       scheduleDueOn: input.scheduleDueOn,
+      ...(adj?.noticeServedOn ? { noticeServedOn: adj.noticeServedOn } : {}),
     });
-    if (r.kind === 'notice')
+    if (r.kind === 'notice') {
       steps.push({
         key: 'adjudication_notice',
         label: 'Last day to serve notice of intention to apply for adjudication',
         dueOn: r.noticeBy,
-        doneOn: null,
-        status: window(r.noticeBy),
+        doneOn: adj?.noticeServedOn ?? null,
+        status: adj?.noticeServedOn ? 'done' : window(r.noticeBy),
         note: 'The respondent then has a short time to give a schedule before the claimant can apply.',
       });
-    else
+      if (adj?.noticeServedOn && r.respondentBy && r.applyBy) {
+        steps.push({
+          key: 'adjudication_respondent',
+          label: 'Last day for the respondent to give a schedule after the notice',
+          dueOn: r.respondentBy,
+          doneOn: null,
+          status: window(r.respondentBy),
+          note: 'If none is given by then, the claimant can apply.',
+        });
+        steps.push({
+          key: 'adjudication_apply',
+          label: 'Last day to apply for adjudication (after the notice)',
+          dueOn: r.applyBy,
+          doneOn: null,
+          status: window(r.applyBy),
+          note: 'Runs from the end of the respondent’s time to give a schedule.',
+        });
+      }
+    } else
       steps.push({
         key: 'adjudication_apply',
         label: 'Last day to apply for adjudication (no schedule given)',
@@ -164,7 +192,70 @@ export function claimTimeline(input: TimelineInput): TimelineStep[] {
         note: 'Runs from the later of the payment due date and the last day for a schedule.',
       });
   }
+  if (adj) steps.push(...adjudicationSteps(adj, steps, today));
   return steps;
+}
+
+const APPLY_KEYS = new Set<TimelineStep['key']>([
+  'adjudication_schedule_less',
+  'adjudication_unpaid',
+  'adjudication_apply',
+]);
+
+/** The steps after the application is lodged, from what staff recorded. Due dates here are the adjudicator's. */
+function adjudicationSteps(
+  adj: AdjudicationFacts,
+  earlier: readonly TimelineStep[],
+  today: LocalDate,
+): TimelineStep[] {
+  if (!adj.applicationLodgedOn) return [];
+  const out: TimelineStep[] = [];
+  // Late only if after every window that was open to the claimant (the last one to close).
+  const windows = earlier.filter((s) => APPLY_KEYS.has(s.key) && s.dueOn).map((s) => s.dueOn!);
+  const lastWindow = windows.sort(compareLocalDates).at(-1) ?? null;
+  const late = lastWindow !== null && compareLocalDates(adj.applicationLodgedOn, lastWindow) > 0;
+  out.push({
+    key: 'adjudication_application',
+    label: 'Application for adjudication lodged',
+    dueOn: null,
+    doneOn: adj.applicationLodgedOn,
+    status: 'done',
+    note: late
+      ? `Lodged after the likely last day to apply (${lastWindow}). Get advice: an application out of time can be void.`
+      : null,
+  });
+  const ended = adj.outcome !== null;
+  const open = (due: LocalDate | null, done: LocalDate | null): TimelineStatus =>
+    done || ended ? 'done' : due ? deadlineStatus(due, today, 'overdue') : 'upcoming';
+  out.push({
+    key: 'adjudication_adjudicator',
+    label: adj.adjudicatorName ? `Adjudicator: ${adj.adjudicatorName}` : 'Adjudicator appointed',
+    dueOn: null,
+    doneOn: adj.adjudicatorAppointedOn,
+    status: adj.adjudicatorAppointedOn || ended ? 'done' : 'upcoming',
+    note: adj.nominatingAuthority ? `Nominated by ${adj.nominatingAuthority}.` : null,
+  });
+  out.push({
+    key: 'adjudication_response',
+    label: 'Response to the application',
+    dueOn: adj.responseDueOn,
+    doneOn: adj.responseLodgedOn,
+    status: open(adj.responseDueOn, adj.responseLodgedOn),
+    note: adj.responseDueOn
+      ? 'Due date as given in the adjudicator’s notice.'
+      : 'Enter the due date from the adjudicator’s notice. The Act sets it from when the application is received or accepted.',
+  });
+  out.push({
+    key: 'adjudication_determination',
+    label: 'Determination',
+    dueOn: adj.determinationDueOn,
+    doneOn: adj.determinedOn,
+    status: open(adj.determinationDueOn, adj.determinedOn),
+    note: adj.determinationDueOn
+      ? 'Due date as given in the adjudicator’s notice.'
+      : 'Enter the due date from the adjudicator’s notice.',
+  });
+  return out;
 }
 
 /** The one step a person should look at now: overdue before due soon, then the earliest date. Null when all is calm. */

@@ -11,6 +11,7 @@ import {
   type CreateOwnerInvoice,
   type CreateVariation,
   type IssuePaymentSchedule,
+  type RecordClaimAdjudication,
   type RecordClaimStatement,
   type RecordClaimPayment,
   type PaymentClaimStatus,
@@ -213,6 +214,11 @@ export function useClaimsMutations(projectId: string) {
     recordStatement: useMutation({
       mutationFn: (v: { claimId: string; body: RecordClaimStatement }) =>
         source.recordStatement(projectId, v.claimId, v.body),
+      onSuccess: refresh,
+    }),
+    recordAdjudication: useMutation({
+      mutationFn: (v: { claimId: string; body: RecordClaimAdjudication }) =>
+        source.recordAdjudication(projectId, v.claimId, v.body),
       onSuccess: refresh,
     }),
     issueSchedule: useMutation({
