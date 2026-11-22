@@ -993,36 +993,11 @@ button.inbox-link {
   .project-shell[data-menu-open='true'] .project-shell__menu-toggle {
     margin-bottom: var(--space-2);
   }
+  /* Opened from the "Project tools" button: the same grouped, collapsible list as the sidebar, not a loose strip. */
   .project-nav {
     position: static;
     max-height: none;
-    flex-direction: row;
-    /* Every tool is visible at once: the strip wraps onto rows instead of scrolling sideways. */
-    flex-wrap: wrap;
     overflow: visible;
-    gap: var(--space-2);
-    border-bottom: 1px solid var(--c-border-divider);
-  }
-  .project-nav__group {
-    display: contents;
-  }
-  .project-nav ul {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .project-nav__group-label,
-  .project-nav .cgroup__header,
-  .project-nav__add,
-  .project-nav__star {
-    display: none;
-  }
-  /* The horizontal strip shows every tool; collapsing only applies to the stacked sidebar. */
-  .project-nav .cgroup,
-  .project-nav .cgroup__body {
-    display: contents !important;
-  }
-  .project-nav__link {
-    white-space: nowrap;
   }
 }
 .app-shell__main {
