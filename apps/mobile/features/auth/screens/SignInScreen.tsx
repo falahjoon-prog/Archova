@@ -5,7 +5,7 @@ import { useSession } from '../../../shared';
 
 export function SignInScreen() {
   const t = useTheme();
-  const { signIn } = useSession();
+  const { signIn, signInError } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,11 +16,13 @@ export function SignInScreen() {
       const result = await signIn();
       if (result.status === 'error') setError(result.message);
     } catch {
-      setError('Could not reach Archova. Check your connection and try again.');
+      // The reason is kept by the session (signInError) so it survives this screen being remounted.
     } finally {
       setBusy(false);
     }
   }
+
+  const shownError = error ?? signInError;
 
   return (
     <Screen title="Archova">
@@ -28,12 +30,12 @@ export function SignInScreen() {
         Sign in with your Archova account. You will finish signing in in your browser, then return
         here.
       </Text>
-      {error ? (
+      {shownError ? (
         <Text
           accessibilityLiveRegion="assertive"
           style={{ color: t.color.statusDanger, fontSize: t.font.size.md }}
         >
-          {error}
+          {shownError}
         </Text>
       ) : null}
       <Button

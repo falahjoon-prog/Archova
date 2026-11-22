@@ -26,6 +26,9 @@ interface SessionContextValue {
   /** `fresh` makes the person enter their password again, for actions that need a recent sign-in. */
   signIn: (opts?: { fresh?: boolean }) => Promise<SignInResult>;
   signOut: () => Promise<void>;
+  /** Why the last sign-in did not finish. Kept here, not in the screen, because the return link from the browser
+   *  can remount the sign-in screen before the result arrives. */
+  signInError: string | null;
   /** Called when the API rejects the refresh token (401 after refresh). */
   markSignedOut: () => void;
 }
@@ -35,6 +38,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<SessionStatus>('loading');
+  const [signInError, setSignInError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -48,18 +52,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (opts?: { fresh?: boolean }) => {
-    const result = await signInWithPkce(
-      {
-        appOrigin: appConfig.appOrigin,
-        randomBytes,
-        sha256,
-        openAuthSession: (url, redirectUri) => WebBrowser.openAuthSessionAsync(url, redirectUri),
-        exchangeCode: session.exchangeCode,
-      },
-      opts?.fresh ? { prompt: 'login' } : {},
-    );
-    if (result.status === 'signed_in') setStatus('signed_in');
-    return result;
+    setSignInError(null);
+    try {
+      const result = await signInWithPkce(
+        {
+          appOrigin: appConfig.appOrigin,
+          randomBytes,
+          sha256,
+          openAuthSession: (url, redirectUri) => WebBrowser.openAuthSessionAsync(url, redirectUri),
+          exchangeCode: session.exchangeCode,
+        },
+        opts?.fresh ? { prompt: 'login' } : {},
+      );
+      if (result.status === 'signed_in') setStatus('signed_in');
+      else if (result.status === 'error') setSignInError(result.message);
+      return result;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      setSignInError(`Could not complete sign-in: ${detail}`);
+      throw error;
+    }
   }, []);
 
   const signOut = useCallback(async () => {
@@ -85,8 +97,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ status, signIn, signOut, markSignedOut }),
-    [status, signIn, signOut, markSignedOut],
+    () => ({ status, signIn, signOut, signInError, markSignedOut }),
+    [status, signIn, signOut, signInError, markSignedOut],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
