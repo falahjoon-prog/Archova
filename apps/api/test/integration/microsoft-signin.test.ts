@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { decodeId } from '@archova/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TEST_PASSWORD, uniqueEmail } from '@archova/testing';
 import { APP_ORIGIN, Browser, createTestContext, signUp, type TestContext } from './helpers';
@@ -79,14 +81,25 @@ describe('Continue with Microsoft', () => {
     expect(login.statusCode).toBe(401);
   });
 
-  it('refuses to attach to an existing account when a work tenant does not vouch for the address', async () => {
+  it('refuses a work tenant that does not vouch for the address: no account is created or joined', async () => {
     const { email } = await signUp(t.app, 'ms-nonauth');
     const res = await signInWithMicrosoft(new Browser(t.app), {
       sub: `s-${email}`,
       email,
       tid: WORK_TID,
     });
-    expect(String(res.headers.location)).toContain('error=microsoft_link_requires_sign_in');
+    expect(String(res.headers.location)).toContain('error=microsoft_unverified_email');
+    expect(res.cookies.find((c) => c.name === '__Host-sid')).toBeUndefined();
+    const fresh = uniqueEmail('ms-unvouched-new');
+    await signInWithMicrosoft(new Browser(t.app), {
+      sub: `s-${fresh}`,
+      email: fresh,
+      tid: WORK_TID,
+    });
+    const rows = await t.adminDb.withGlobalTx('identity', (tx) =>
+      tx.execute(sql`select 1 from identity.users where email = ${fresh}`),
+    );
+    expect(rows.rows).toHaveLength(0);
     // The password still works: nobody was locked out.
     const login = await new Browser(t.app).post('/v1/auth/login', {
       email,
@@ -105,6 +118,30 @@ describe('Continue with Microsoft', () => {
       xms_edov: true,
     });
     expect(res.headers.location).toBe(`${APP_ORIGIN}/orgs`);
+  });
+
+  it('a takeover removes outside identities the previous holder of the account had linked', async () => {
+    const email = uniqueEmail('ms-takeover-ids');
+    const squatter = new Browser(t.app);
+    const signup = await squatter.post('/v1/auth/signup', {
+      email,
+      password: TEST_PASSWORD,
+      name: 'Sq',
+    });
+    const userId = decodeId('user', signup.json().user.id as string)!;
+    await t.adminDb.withGlobalTx('identity', (tx) =>
+      tx.execute(
+        sql`insert into identity.external_identities (id, user_id, provider, subject, email) values (gen_random_uuid(), ${userId}, 'google', ${'attacker-' + email}, ${email})`,
+      ),
+    );
+    await signInWithMicrosoft(new Browser(t.app), { sub: `s-${email}`, email, tid: PERSONAL_TID });
+    const left = await t.adminDb.withGlobalTx('identity', (tx) =>
+      tx.execute(
+        sql`select provider, tenant_id from identity.external_identities where user_id = ${userId}`,
+      ),
+    );
+    const list = left.rows as unknown as { provider: string; tenant_id: string | null }[];
+    expect(list).toEqual([{ provider: 'microsoft', tenant_id: PERSONAL_TID }]);
   });
 
   it('rejects an id token issued by a different tenant than it claims', async () => {

@@ -233,9 +233,9 @@ export function createExternalSignInService(
     const email = claims.email!.trim();
     const subject = claims.sub!;
     const vouched = SPECS[provider].emailVouched(claims);
-    // Google refuses an address it does not vouch for. Microsoft lets the person in with one, but never joins it to
-    // an existing account, and the new account's address stays unverified.
-    if (!vouched && provider === 'google') throw new ExternalSignInError('unverified_email');
+    // An address the provider does not vouch for proves nothing about who owns it (Microsoft work tenants can put any
+    // address in `email`), so no account is created or joined from it. Work accounts need the `xms_edov` claim.
+    if (!vouched) throw new ExternalSignInError('unverified_email');
 
     const result = await database.withGlobalTx('identity', async (tx) => {
       const now = new Date();
@@ -262,8 +262,6 @@ export function createExternalSignInService(
         const [existing] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
         if (existing) {
           if (existing.status !== 'active') throw new ExternalSignInError('account_disabled');
-          // An address the provider does not vouch for proves nothing about who owns the account.
-          if (!vouched) throw new ExternalSignInError('link_requires_sign_in');
           userId = existing.id;
           // Anything beyond a password (a second factor, a passkey) on a verified account must not be bypassed by an
           // outside sign-in: the person signs in the usual way and links the provider from their account instead.
@@ -285,6 +283,8 @@ export function createExternalSignInService(
             takeover = true;
             unlinkedPassword = gone.length > 0;
             await tx.delete(oauthCodes).where(eq(oauthCodes.userId, userId));
+            // Outside identities too: one made earlier by someone else must not outlive the takeover.
+            await tx.delete(externalIdentities).where(eq(externalIdentities.userId, userId));
             const mine = tx
               .select({ id: sessionRows.id })
               .from(sessionRows)
@@ -307,7 +307,7 @@ export function createExternalSignInService(
             name: (claims.name ?? email.split('@')[0] ?? email).trim().slice(0, 200),
             locale: 'en-AU',
             status: 'active',
-            ...(vouched ? { emailVerifiedAt: now } : {}),
+            emailVerifiedAt: now,
           });
         }
         await tx.insert(externalIdentities).values({
@@ -316,6 +316,7 @@ export function createExternalSignInService(
           provider,
           subject,
           email,
+          ...(typeof claims.tid === 'string' ? { tenantId: claims.tid } : {}),
           lastUsedAt: now,
         });
       }

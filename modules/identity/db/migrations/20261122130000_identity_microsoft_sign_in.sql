@@ -6,3 +6,6 @@ alter table identity.external_identities
 alter table identity.sessions drop constraint if exists sessions_auth_method_check;
 alter table identity.sessions
   add constraint sessions_auth_method_check check (auth_method in ('password', 'passkey', 'sso', 'oauth', 'google', 'microsoft'));
+
+-- Microsoft: remember the tenant a sign-in came from (the subject is only unique per app registration).
+alter table identity.external_identities add column tenant_id text;

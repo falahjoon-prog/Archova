@@ -124,7 +124,10 @@ export function identityRoutes({
         headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
       };
     } catch (e) {
-      if (e instanceof ExternalSignInError) return fail(e.reason);
+      // Which emails already have an account is not for the browser to learn: that refusal looks like any failure
+      // here, and the reason stays in the security log.
+      if (e instanceof ExternalSignInError)
+        return fail(e.reason === 'link_requires_sign_in' ? 'failed' : e.reason);
       throw e;
     }
   };

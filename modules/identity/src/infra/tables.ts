@@ -180,6 +180,8 @@ export const externalIdentities = identity.table('external_identities', {
   provider: text('provider').$type<'google' | 'microsoft'>().notNull(),
   subject: text('subject').notNull(),
   email: citext('email').notNull(),
+  /** Microsoft: the tenant the sign-in came from (the `sub` is only unique per app registration). */
+  tenantId: text('tenant_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
 });

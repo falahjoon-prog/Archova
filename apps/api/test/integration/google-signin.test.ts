@@ -172,7 +172,7 @@ describe('Continue with Google', () => {
       tx.execute(sql`update identity.users set email_verified_at = now() where id = ${userId}`),
     );
     const res = await signInWithGoogle(new Browser(t.app), { sub: `sub-${email}`, email });
-    expect(String(res.headers.location)).toContain('error=google_link_requires_sign_in');
+    expect(String(res.headers.location)).toContain('error=google_failed');
     expect(res.cookies.find((c) => c.name === '__Host-sid')).toBeUndefined();
     const login = await new Browser(t.app).post('/v1/auth/login', {
       email,
