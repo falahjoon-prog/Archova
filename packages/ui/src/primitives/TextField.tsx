@@ -1,4 +1,5 @@
-import { useId, type ComponentPropsWithRef, type ReactNode } from 'react';
+import { useId, useState, type ComponentPropsWithRef, type ReactNode } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { cx } from '../lib/cx';
 import { Field, describedBy } from './Field';
 
@@ -25,6 +26,28 @@ export function TextField({
   const inputId = id ?? autoId;
   const hintId = `${inputId}-hint`;
   const errorId = `${inputId}-error`;
+  const [revealed, setRevealed] = useState(false);
+  // Password fields get a show/hide toggle so people can check what they typed (small screens, long passwords).
+  const canReveal = rest.type === 'password' && !rest.disabled && !rest.readOnly;
+  const input = (
+    <input
+      {...rest}
+      type={canReveal && revealed ? 'text' : rest.type}
+      id={inputId}
+      className={cx(
+        'ac-input',
+        canReveal && 'ac-input--has-toggle',
+        aiFilled && 'ac-input--ai',
+        className,
+      )}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={describedBy({
+        hint: Boolean(hint) && hintId,
+        error: Boolean(error) && errorId,
+        extra,
+      })}
+    />
+  );
   return (
     <Field
       id={inputId}
@@ -35,17 +58,22 @@ export function TextField({
       errorId={errorId}
       aiFilled={aiFilled}
     >
-      <input
-        {...rest}
-        id={inputId}
-        className={cx('ac-input', aiFilled && 'ac-input--ai', className)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy({
-          hint: Boolean(hint) && hintId,
-          error: Boolean(error) && errorId,
-          extra,
-        })}
-      />
+      {canReveal ? (
+        <div className="ac-input-wrap">
+          {input}
+          <button
+            type="button"
+            className="ac-input-toggle ac-focusable"
+            aria-label={revealed ? 'Hide password' : 'Show password'}
+            aria-pressed={revealed}
+            onClick={() => setRevealed((v) => !v)}
+          >
+            {revealed ? <EyeOff size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
+          </button>
+        </div>
+      ) : (
+        input
+      )}
     </Field>
   );
 }

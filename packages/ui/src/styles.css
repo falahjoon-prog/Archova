@@ -91,6 +91,31 @@
   border: 1px solid var(--c-border-control);
   border-radius: var(--radius-sm);
 }
+.ac-input-wrap {
+  position: relative;
+  display: block;
+}
+.ac-input--has-toggle {
+  padding-inline-end: calc(var(--space-10) + var(--space-1));
+}
+.ac-input-toggle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-10) + var(--space-1));
+  padding: 0;
+  color: var(--c-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.ac-input-toggle:hover {
+  color: var(--c-text);
+}
 .ac-input::placeholder {
   color: var(--c-text-muted);
 }
