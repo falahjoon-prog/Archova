@@ -93,6 +93,11 @@ const Env = z.object({
   API_M365_CLIENT_ID: z.string().optional(),
   API_M365_PRIVATE_KEY_PEM: z.string().optional(),
   API_M365_CERT_THUMBPRINT: z.string().optional(),
+  // "Continue with Google" sign-in: its own OAuth client (scopes openid, email, profile only), never the Drive one above.
+  // The redirect URI defaults to `<first API_APP_ORIGINS entry>/v1/auth/google/callback` and must be listed on the client.
+  API_GOOGLE_SIGNIN_CLIENT_ID: z.string().optional(),
+  API_GOOGLE_SIGNIN_CLIENT_SECRET: z.string().optional(),
+  API_GOOGLE_SIGNIN_REDIRECT_URI: z.string().url().optional(),
   API_GOOGLE_CLIENT_ID: z.string().optional(),
   API_GOOGLE_CLIENT_SECRET: z.string().optional(),
   // Signs each sealed claim or schedule record (Ed25519, PKCS#8 PEM; write line breaks as \n). Required in
@@ -201,6 +206,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
           ? { clientId: e.API_GOOGLE_CLIENT_ID, clientSecret: e.API_GOOGLE_CLIENT_SECRET }
           : null,
     },
+    googleSignIn:
+      e.API_GOOGLE_SIGNIN_CLIENT_ID && e.API_GOOGLE_SIGNIN_CLIENT_SECRET
+        ? {
+            clientId: e.API_GOOGLE_SIGNIN_CLIENT_ID,
+            clientSecret: e.API_GOOGLE_SIGNIN_CLIENT_SECRET,
+            redirectUri:
+              e.API_GOOGLE_SIGNIN_REDIRECT_URI ??
+              `${appOrigins[0] ?? 'http://localhost:3000'}/v1/auth/google/callback`,
+          }
+        : null,
     ai: loadAiConfig(env),
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,

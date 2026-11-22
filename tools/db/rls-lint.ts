@@ -12,6 +12,8 @@ export const GLOBAL_TABLES = new Set([
   'identity.refresh_tokens',
   'identity.oauth_clients',
   'identity.oauth_codes',
+  // Sign-in with Google: found by the provider's subject id before any org is known.
+  'identity.external_identities',
   // Partner app codes and tokens are found by hash before any org is known; they carry `target_org_id`.
   'identity.app_codes',
   'identity.app_tokens',

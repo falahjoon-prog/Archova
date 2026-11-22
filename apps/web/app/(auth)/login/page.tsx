@@ -8,6 +8,11 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { next } = await searchParams;
-  return <LoginScreen next={typeof next === 'string' ? next : undefined} />;
+  const { next, error } = await searchParams;
+  return (
+    <LoginScreen
+      next={typeof next === 'string' ? next : undefined}
+      error={typeof error === 'string' ? error : undefined}
+    />
+  );
 }
