@@ -37,8 +37,8 @@ services:
         value: log
       - key: LOG_LEVEL
         value: info
-keyvalues:
-  - name: archova-cache
+  - type: keyvalue
+    name: archova-cache
     plan: free
     region: singapore
     ipAllowList: []
