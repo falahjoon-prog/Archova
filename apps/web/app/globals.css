@@ -773,6 +773,9 @@ button.inbox-link {
 .project-shell__content {
   min-width: 0;
 }
+.project-shell__menu-toggle {
+  display: none;
+}
 .project-nav {
   position: sticky;
   top: calc(var(--app-bar-h, 0px) + var(--space-4));
@@ -966,6 +969,27 @@ button.inbox-link {
   }
   .project-shell__side {
     position: static;
+  }
+  .project-shell:not([data-menu-open='true']) .project-nav {
+    display: none;
+  }
+  .project-shell__menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    font: inherit;
+    font-weight: 600;
+    color: var(--c-text);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border-divider);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+  }
+  .project-shell[data-menu-open='true'] .project-shell__menu-toggle {
+    margin-bottom: var(--space-2);
   }
   .project-nav {
     position: static;

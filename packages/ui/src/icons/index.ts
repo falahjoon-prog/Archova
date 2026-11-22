@@ -19,6 +19,7 @@ export {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Circle,
