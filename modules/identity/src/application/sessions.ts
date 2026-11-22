@@ -7,7 +7,7 @@ import {
   type Principal,
   type Tx,
 } from '@archova/kernel';
-import { sessions } from '../infra/tables';
+import { sessions, users } from '../infra/tables';
 import {
   SESSION_ABSOLUTE_MS,
   SESSION_IDLE_MS,
@@ -106,11 +106,14 @@ export function createSessionService({
     if (!cached) {
       const row = await database.withGlobalTx('identity', async (tx) => {
         const [r] = await tx
-          .select()
+          .select({ session: sessions, resetAt: users.credentialsResetAt })
           .from(sessions)
+          .innerJoin(users, eq(users.id, sessions.userId))
           .where(eq(sessions.tokenHash, tokenHash))
           .limit(1);
-        return r ?? null;
+        if (!r) return null;
+        // A session older than a takeover cut-off is dead even if its Redis revoke never happened.
+        return r.resetAt && r.session.authTime < r.resetAt ? null : r.session;
       });
       if (!row || !isSessionActive(row, now)) return null;
       cached = {
@@ -138,14 +141,28 @@ export function createSessionService({
     if (stale) {
       const idle = nextIdleExpiry(now, times.absoluteExpiresAt);
       const sessionId = cached.sessionId;
-      const updated = await database.withGlobalTx('identity', (tx) =>
-        tx
+      const updated = await database.withGlobalTx('identity', async (tx) => {
+        // The periodic touch also re-checks the takeover cut-off, so a cached session cannot outlive it by long.
+        const [u] = await tx
+          .select({ resetAt: users.credentialsResetAt, authTime: sessions.authTime })
+          .from(sessions)
+          .innerJoin(users, eq(users.id, sessions.userId))
+          .where(eq(sessions.id, sessionId))
+          .limit(1);
+        if (u?.resetAt && u.authTime < u.resetAt) {
+          await tx.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, sessionId));
+          return [];
+        }
+        return tx
           .update(sessions)
           .set({ lastSeenAt: now, idleExpiresAt: idle })
           .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)))
-          .returning({ id: sessions.id }),
-      );
-      if (updated.length === 0) return null;
+          .returning({ id: sessions.id });
+      });
+      if (updated.length === 0) {
+        if (redis) await redis.del(cacheKey(tokenHash));
+        return null;
+      }
       cached = { ...cached, idleExpiresAt: idle.toISOString(), lastTouchedAt: now.toISOString() };
     }
     if (redis && (stale || !fromCache)) {
@@ -193,14 +210,14 @@ export function createSessionService({
   }
 
   /** Ends every open session of a person (account deletion). */
-  async function revokeAllForUser(userId: string): Promise<void> {
+  async function revokeAllForUser(userId: string, exceptSessionId?: string): Promise<void> {
     const open = await database.withGlobalTx('identity', (tx) =>
       tx
         .select({ id: sessions.id })
         .from(sessions)
         .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt))),
     );
-    for (const s of open) await revoke(s.id);
+    for (const s of open) if (s.id !== exceptSessionId) await revoke(s.id);
   }
 
   /** Bearer requests check the `sid` on every call (ADR-0004 §2). */

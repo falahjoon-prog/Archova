@@ -16,6 +16,8 @@ export const users = identity.table('users', {
   timezone: text('timezone'),
   status: text('status').$type<'active' | 'disabled' | 'deleted'>().notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  /** Set when an unverified account was taken over by its real owner: older API tokens no longer work. */
+  credentialsResetAt: timestamp('credentials_reset_at', { withTimezone: true }),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -35,7 +37,9 @@ export const sessions = identity.table('sessions', {
   tokenHash: bytea('token_hash'),
   userId: uuid('user_id').notNull(),
   client: text('client').$type<'web' | 'ios' | 'android' | 'api'>().notNull(),
-  authMethod: text('auth_method').$type<'password' | 'passkey' | 'sso' | 'oauth'>().notNull(),
+  authMethod: text('auth_method')
+    .$type<'password' | 'passkey' | 'sso' | 'oauth' | 'google'>()
+    .notNull(),
   authTime: timestamp('auth_time', { withTimezone: true }).notNull(),
   ip: text('ip'),
   userAgent: text('user_agent'),
@@ -76,7 +80,9 @@ export const oauthCodes = identity.table('oauth_codes', {
   userId: uuid('user_id').notNull(),
   redirectUri: text('redirect_uri').notNull(),
   codeChallenge: text('code_challenge').notNull(),
-  authMethod: text('auth_method').$type<'password' | 'passkey' | 'sso' | 'oauth'>().notNull(),
+  authMethod: text('auth_method')
+    .$type<'password' | 'passkey' | 'sso' | 'oauth' | 'google'>()
+    .notNull(),
   authTime: timestamp('auth_time', { withTimezone: true }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),
@@ -166,4 +172,14 @@ export const appTokens = identity.table('app_tokens', {
   usedAt: timestamp('used_at', { withTimezone: true }),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const externalIdentities = identity.table('external_identities', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull(),
+  provider: text('provider').$type<'google'>().notNull(),
+  subject: text('subject').notNull(),
+  email: citext('email').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
 });

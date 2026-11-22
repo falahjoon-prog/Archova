@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { webRoutes } from '@archova/routes';
 import { Card, PageHeader } from '@archova/ui';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { SignupForm } from '../forms/SignupForm';
 import { useRedirectAfterSignIn } from '../hooks/useRedirectAfterSignIn';
 
@@ -15,7 +16,10 @@ export function SignupScreen({ next }: { next?: string }) {
         description="You can create or join an organisation next."
       />
       <Card>
-        <SignupForm onSignedUp={redirect} />
+        <div className="stack">
+          <GoogleSignInButton {...(next ? { next } : {})} />
+          <SignupForm onSignedUp={redirect} />
+        </div>
       </Card>
       <p className="u-center">
         Already have an account?{' '}

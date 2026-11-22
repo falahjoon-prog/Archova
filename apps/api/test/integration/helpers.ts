@@ -69,6 +69,8 @@ export async function createTestContext(
     webhookTransport?: WebhookTransport;
     /** Answers Xero and MYOB calls; the default would reach the real services. */
     accountingFetch?: (url: string, init?: RequestInit) => Promise<Response>;
+    /** Answers Google's token endpoint for "Continue with Google". */
+    googleSignInFetch?: typeof fetch;
   } = {},
 ): Promise<TestContext> {
   const config = loadConfig({
@@ -103,6 +105,7 @@ export async function createTestContext(
     messages,
     ...(opts.webhookTransport ? { webhookTransport: opts.webhookTransport } : {}),
     ...(opts.accountingFetch ? { accountingFetch: opts.accountingFetch } : {}),
+    ...(opts.googleSignInFetch ? { googleSignInFetch: opts.googleSignInFetch } : {}),
   });
   await app.ready();
   return {

@@ -106,6 +106,56 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SessionInfo' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/providers:
+    get:
+      operationId: getAuthProviders
+      tags: [auth]
+      x-module: identity
+      x-auth: none
+      summary: Which outside sign-in providers are switched on, so the sign-in pages show only working buttons.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [google]
+                properties:
+                  google: { type: boolean }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/google/start:
+    get:
+      operationId: googleSignInStart
+      tags: [auth]
+      x-module: identity
+      x-auth: none
+      summary: Start "Continue with Google". Redirects to Google; the browser returns at the callback.
+      parameters:
+        - {
+            name: next,
+            in: query,
+            required: false,
+            description: 'Same-origin path to open after sign-in.',
+            schema: { type: string, maxLength: 2000 },
+          }
+      responses:
+        '302': { description: Redirect to Google }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/google/callback:
+    get:
+      operationId: googleSignInCallback
+      tags: [auth]
+      x-module: identity
+      x-auth: none
+      summary: Where Google sends the person back. Starts a web session (creating the account on first use) and redirects into the app, or back to the sign-in page with `?error=` when it fails.
+      parameters:
+        - { name: code, in: query, required: false, schema: { type: string, maxLength: 2000 } }
+        - { name: state, in: query, required: false, schema: { type: string, maxLength: 512 } }
+        - { name: error, in: query, required: false, schema: { type: string, maxLength: 200 } }
+      responses:
+        '302': { description: 'Redirect into the app; `__Host-sid` and `__Host-csrf` cookies set' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/auth/logout:
     post:
       operationId: logout

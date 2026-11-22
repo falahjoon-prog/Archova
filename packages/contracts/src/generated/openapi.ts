@@ -34,6 +34,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which outside sign-in providers are switched on, so the sign-in pages show only working buttons. */
+        get: operations["getAuthProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/google/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Start "Continue with Google". Redirects to Google; the browser returns at the callback. */
+        get: operations["googleSignInStart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where Google sends the person back. Starts a web session (creating the account on first use) and redirects into the app, or back to the sign-in page with `?error=` when it fails. */
+        get: operations["googleSignInCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -30164,6 +30215,74 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SessionInfo"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAuthProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        google: boolean;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    googleSignInStart: {
+        parameters: {
+            query?: {
+                /** @description Same-origin path to open after sign-in. */
+                next?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to Google */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    googleSignInCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect into the app; `__Host-sid` and `__Host-csrf` cookies set */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

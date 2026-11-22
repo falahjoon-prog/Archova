@@ -390,10 +390,10 @@ button.inbox-link {
     min-width: 44px;
     padding: 0;
   }
-  .sign-out__label {
+  .sign-out__button .sign-out__label {
     display: none;
   }
-  .sign-out__icon {
+  .sign-out__button .sign-out__icon {
     display: block;
   }
   /* Narrow padding so the logo, Ask Nova, inbox and Sign out all fit on one row at 375px. */
@@ -5137,4 +5137,14 @@ fieldset.worker-card > legend {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* "Continue with Google" on the sign-in and sign-up pages: a link that looks like a full-width secondary button. */
+.auth-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-decoration: none;
 }

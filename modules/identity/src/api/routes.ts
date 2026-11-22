@@ -12,6 +12,14 @@ import { APP_SCOPES, TOKEN_SCOPES } from '../domain/api-scopes';
 import type { PartnerAppService } from '../application/partner-apps';
 import type { ApiTokenService } from '../application/api-tokens';
 import type { AccountService } from '../application/accounts';
+import {
+  GOOGLE_FLOW_COOKIE,
+  GOOGLE_FLOW_MAX_AGE_S,
+  GoogleSignInError,
+  decodeFlow,
+  encodeFlow,
+  type GoogleSignInService,
+} from '../application/google-signin';
 import type { OAuthService } from '../application/oauth';
 import type { SessionService } from '../application/sessions';
 import { toApiTokenDto, toAppInstallDto, toOauthAppDto, toUserDto } from './mappers';
@@ -20,6 +28,7 @@ export interface IdentityRouteDeps {
   accounts: AccountService;
   sessions: SessionService;
   oauth: OAuthService;
+  google: GoogleSignInService;
   apiTokens: ApiTokenService;
   partnerApps: PartnerAppService;
   /** Web sign-in page; unauthenticated /oauth/authorize requests are sent here with `next`. */
@@ -41,6 +50,7 @@ export function identityRoutes({
   accounts,
   sessions,
   oauth,
+  google,
   apiTokens,
   partnerApps,
   webSignInUrl,
@@ -207,6 +217,64 @@ export function identityRoutes({
         },
         setCookies: sessionCookies(session.token!, csrf),
       };
+    },
+    getAuthProviders: async () => ({ status: 200, body: { google: google.enabled } }),
+    googleSignInStart: async ({ query }) => {
+      const failed = (reason: string) => {
+        const url = new URL(webSignInUrl);
+        url.searchParams.set('error', reason);
+        return { status: 302, redirect: url.toString() };
+      };
+      if (!google.enabled) return failed('google_unavailable');
+      const { redirect, flow } = google.begin(query.next);
+      return {
+        status: 302,
+        redirect,
+        setCookies: [
+          {
+            name: GOOGLE_FLOW_COOKIE,
+            value: encodeFlow(flow),
+            httpOnly: true,
+            maxAgeSeconds: GOOGLE_FLOW_MAX_AGE_S,
+          },
+        ],
+      };
+    },
+    googleSignInCallback: async ({ query, cookies, ip, userAgent }) => {
+      const fail = (reason: string) => {
+        const url = new URL(webSignInUrl);
+        url.searchParams.set('error', `google_${reason}`);
+        return {
+          status: 302,
+          redirect: url.toString(),
+          clearCookies: [GOOGLE_FLOW_COOKIE],
+          headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
+        };
+      };
+      if (!google.enabled || !google.origin) return fail('unavailable');
+      // Google sends `error=access_denied` when the person presses Cancel.
+      if (query.error) return fail('cancelled');
+      if (!query.code || !query.state) return fail('failed');
+      try {
+        const { session, next } = await google.complete(
+          {
+            code: query.code,
+            state: query.state,
+            flow: decodeFlow(cookies[GOOGLE_FLOW_COOKIE]),
+          },
+          { ip, userAgent },
+        );
+        return {
+          status: 302,
+          redirect: new URL(next ?? '/orgs', google.origin).toString(),
+          setCookies: sessionCookies(session.token!, newToken()),
+          clearCookies: [GOOGLE_FLOW_COOKIE],
+          headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
+        };
+      } catch (e) {
+        if (e instanceof GoogleSignInError) return fail(e.reason);
+        throw e;
+      }
     },
     logout: async (input) => {
       const principal = requirePrincipal(input);
