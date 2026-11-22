@@ -19,6 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...pages.docs
       .filter((p) => !p.seo?.noindex)
       .map((p) => at(p.slug === 'home' ? '/' : `/${p.slug}`, p.updatedAt)),
+    at('/app', new Date().toISOString()),
     at('/blog', new Date().toISOString()),
     ...posts.docs.map((p) => at(`/blog/${p.slug}`, p.updatedAt)),
     ...help.docs.map((p) => at(`/help/${p.slug}`, p.updatedAt)),
