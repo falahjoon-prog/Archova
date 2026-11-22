@@ -98,6 +98,11 @@ const Env = z.object({
   API_GOOGLE_SIGNIN_CLIENT_ID: z.string().optional(),
   API_GOOGLE_SIGNIN_CLIENT_SECRET: z.string().optional(),
   API_GOOGLE_SIGNIN_REDIRECT_URI: z.string().url().optional(),
+  // "Continue with Microsoft" sign-in: a multi-tenant Entra app registration (personal and work accounts).
+  // The redirect URI defaults to `<first API_APP_ORIGINS entry>/v1/auth/microsoft/callback`.
+  API_MICROSOFT_SIGNIN_CLIENT_ID: z.string().optional(),
+  API_MICROSOFT_SIGNIN_CLIENT_SECRET: z.string().optional(),
+  API_MICROSOFT_SIGNIN_REDIRECT_URI: z.string().url().optional(),
   API_GOOGLE_CLIENT_ID: z.string().optional(),
   API_GOOGLE_CLIENT_SECRET: z.string().optional(),
   // Signs each sealed claim or schedule record (Ed25519, PKCS#8 PEM; write line breaks as \n). Required in
@@ -206,16 +211,28 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
           ? { clientId: e.API_GOOGLE_CLIENT_ID, clientSecret: e.API_GOOGLE_CLIENT_SECRET }
           : null,
     },
-    googleSignIn:
-      e.API_GOOGLE_SIGNIN_CLIENT_ID && e.API_GOOGLE_SIGNIN_CLIENT_SECRET
-        ? {
-            clientId: e.API_GOOGLE_SIGNIN_CLIENT_ID,
-            clientSecret: e.API_GOOGLE_SIGNIN_CLIENT_SECRET,
-            redirectUri:
-              e.API_GOOGLE_SIGNIN_REDIRECT_URI ??
-              `${appOrigins[0] ?? 'http://localhost:3000'}/v1/auth/google/callback`,
-          }
-        : null,
+    externalSignIn: {
+      google:
+        e.API_GOOGLE_SIGNIN_CLIENT_ID && e.API_GOOGLE_SIGNIN_CLIENT_SECRET
+          ? {
+              clientId: e.API_GOOGLE_SIGNIN_CLIENT_ID,
+              clientSecret: e.API_GOOGLE_SIGNIN_CLIENT_SECRET,
+              redirectUri:
+                e.API_GOOGLE_SIGNIN_REDIRECT_URI ??
+                `${appOrigins[0] ?? 'http://localhost:3000'}/v1/auth/google/callback`,
+            }
+          : null,
+      microsoft:
+        e.API_MICROSOFT_SIGNIN_CLIENT_ID && e.API_MICROSOFT_SIGNIN_CLIENT_SECRET
+          ? {
+              clientId: e.API_MICROSOFT_SIGNIN_CLIENT_ID,
+              clientSecret: e.API_MICROSOFT_SIGNIN_CLIENT_SECRET,
+              redirectUri:
+                e.API_MICROSOFT_SIGNIN_REDIRECT_URI ??
+                `${appOrigins[0] ?? 'http://localhost:3000'}/v1/auth/microsoft/callback`,
+            }
+          : null,
+    },
     ai: loadAiConfig(env),
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,

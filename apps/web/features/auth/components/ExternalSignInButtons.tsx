@@ -39,26 +39,52 @@ function GoogleMark() {
   );
 }
 
+function MicrosoftMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 23 23" aria-hidden="true" focusable="false">
+      <path fill="#F25022" d="M1 1h10v10H1z" />
+      <path fill="#7FBA00" d="M12 1h10v10H12z" />
+      <path fill="#00A4EF" d="M1 12h10v10H1z" />
+      <path fill="#FFB900" d="M12 12h10v10H12z" />
+    </svg>
+  );
+}
+
 /**
- * "Continue with Google": a plain link, because the sign-in is a full-page trip to Google and back. Renders nothing
- * until the API says Google is switched on, so a deployment without it shows no dead button.
+ * "Continue with Google / Microsoft": plain links, because the sign-in is a full-page trip to the provider and back.
+ * Each renders only once the API says it is switched on, so a deployment without one shows no dead button.
  */
-export function GoogleSignInButton({ next }: { next?: string }) {
+export function ExternalSignInButtons({ next }: { next?: string }) {
   const providers = useAuthProviders();
-  if (!providers.data?.google) return null;
-  const href = next
-    ? `/v1/auth/google/start?next=${encodeURIComponent(next)}`
-    : '/v1/auth/google/start';
+  const href = (provider: 'google' | 'microsoft') =>
+    next
+      ? `/v1/auth/${provider}/start?next=${encodeURIComponent(next)}`
+      : `/v1/auth/${provider}/start`;
+  const google = providers.data?.google;
+  const microsoft = providers.data?.microsoft;
+  if (!google && !microsoft) return null;
   return (
     <div className="stack">
-      <a
-        className={buttonClassName('secondary', 'auth-google')}
-        href={href}
-        data-testid="google-sign-in"
-      >
-        <GoogleMark />
-        <span>Continue with Google</span>
-      </a>
+      {google ? (
+        <a
+          className={buttonClassName('secondary', 'auth-google')}
+          href={href('google')}
+          data-testid="google-sign-in"
+        >
+          <GoogleMark />
+          <span>Continue with Google</span>
+        </a>
+      ) : null}
+      {microsoft ? (
+        <a
+          className={buttonClassName('secondary', 'auth-google')}
+          href={href('microsoft')}
+          data-testid="microsoft-sign-in"
+        >
+          <MicrosoftMark />
+          <span>Continue with Microsoft</span>
+        </a>
+      ) : null}
       <p className="u-center u-caption u-m-0">or use your email</p>
     </div>
   );

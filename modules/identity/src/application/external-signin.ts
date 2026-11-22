@@ -13,30 +13,87 @@ import { newToken, safeEqual, sha256 } from './crypto';
 import type { RequestMeta } from './accounts';
 import type { SessionService } from './sessions';
 
-const AUTHORIZE = 'https://accounts.google.com/o/oauth2/v2/auth';
-const TOKEN = 'https://oauth2.googleapis.com/token';
+/** "Continue with …" providers. Each speaks OpenID Connect (code flow with PKCE). */
+export type ExternalProvider = 'google' | 'microsoft';
+export const EXTERNAL_PROVIDERS: readonly ExternalProvider[] = ['google', 'microsoft'];
 
-export interface GoogleSignInConfig {
+export interface ExternalProviderConfig {
   clientId: string;
   clientSecret: string;
-  /** Where Google sends the person back: `<web origin>/v1/auth/google/callback`. Must be allowed on the Google client. */
+  /** Where the provider sends the person back: `<web origin>/v1/auth/<provider>/callback`. Must be allowed on the app. */
   redirectUri: string;
   /** Replaceable in tests. */
   fetch?: typeof fetch;
 }
 
-/** What we keep between the redirect to Google and the return, in a short-lived cookie on the web origin. */
-export interface GoogleFlowState {
+export type ExternalProviderConfigs = Partial<
+  Record<ExternalProvider, ExternalProviderConfig | null>
+>;
+
+interface IdTokenClaims {
+  iss?: string;
+  aud?: string;
+  exp?: number;
+  sub?: string;
+  nonce?: string;
+  email?: string;
+  email_verified?: boolean | string;
+  name?: string;
+  /** Microsoft: the tenant the person signed in to. */
+  tid?: string;
+  /** Microsoft optional claim: the address's domain is owned by the tenant. */
+  xms_edov?: boolean | string;
+}
+
+interface ProviderSpec {
+  authorizeUrl: string;
+  tokenUrl: string;
+  /** Is the token from the issuer this provider uses? */
+  issuerOk(claims: IdTokenClaims): boolean;
+  /**
+   * Does the provider vouch that the person owns the address? An address it does not vouch for is never used to
+   * find or take over an existing account (Microsoft's `email` claim can be set by a tenant admin to any value).
+   */
+  emailVouched(claims: IdTokenClaims): boolean;
+}
+
+const truthy = (v: boolean | string | undefined) => v === true || v === 'true';
+
+/** The tenant id Microsoft uses for personal accounts (outlook.com, hotmail.com, …), whose address is the sign-in. */
+const MICROSOFT_PERSONAL_TENANT = '9188040d-6c67-4c5b-b112-36a304b66dad';
+
+const SPECS: Record<ExternalProvider, ProviderSpec> = {
+  google: {
+    authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    issuerOk: (c) => c.iss === 'https://accounts.google.com' || c.iss === 'accounts.google.com',
+    emailVouched: (c) => truthy(c.email_verified),
+  },
+  microsoft: {
+    // `common`: work, school and personal accounts. The issuer then names the person's own tenant.
+    authorizeUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    issuerOk: (c) =>
+      typeof c.tid === 'string' &&
+      /^[0-9a-f-]{36}$/i.test(c.tid) &&
+      c.iss === `https://login.microsoftonline.com/${c.tid}/v2.0`,
+    emailVouched: (c) => c.tid === MICROSOFT_PERSONAL_TENANT || truthy(c.xms_edov),
+  },
+};
+
+/** What we keep between the redirect to the provider and the return, in a short-lived cookie on the web origin. */
+export interface ExternalFlowState {
+  provider: ExternalProvider;
   state: string;
   verifier: string;
   nonce: string;
   next: string | null;
 }
 
-export const GOOGLE_FLOW_COOKIE = '__Host-gsi';
-export const GOOGLE_FLOW_MAX_AGE_S = 600;
+export const EXTERNAL_FLOW_COOKIE = '__Host-oidc';
+export const EXTERNAL_FLOW_MAX_AGE_S = 600;
 
-export type GoogleFailure =
+export type ExternalFailure =
   | 'cancelled'
   | 'expired'
   | 'unverified_email'
@@ -44,9 +101,9 @@ export type GoogleFailure =
   | 'account_disabled'
   | 'failed';
 
-export class GoogleSignInError extends Error {
-  constructor(readonly reason: GoogleFailure) {
-    super(`google sign-in failed: ${reason}`);
+export class ExternalSignInError extends Error {
+  constructor(readonly reason: ExternalFailure) {
+    super(`external sign-in failed: ${reason}`);
   }
 }
 
@@ -58,51 +115,49 @@ export function safeNext(next: string | null | undefined): string | null {
   return next;
 }
 
-export const encodeFlow = (f: GoogleFlowState) =>
+export const encodeFlow = (f: ExternalFlowState) =>
   Buffer.from(JSON.stringify(f)).toString('base64url');
 
-export function decodeFlow(value: string | undefined): GoogleFlowState | null {
+export function decodeFlow(value: string | undefined): ExternalFlowState | null {
   if (!value) return null;
   try {
-    const f = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as GoogleFlowState;
-    return typeof f.state === 'string' &&
+    const f = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as ExternalFlowState;
+    return EXTERNAL_PROVIDERS.includes(f.provider) &&
+      typeof f.state === 'string' &&
       typeof f.verifier === 'string' &&
       typeof f.nonce === 'string'
-      ? { state: f.state, verifier: f.verifier, nonce: f.nonce, next: safeNext(f.next) }
+      ? {
+          provider: f.provider,
+          state: f.state,
+          verifier: f.verifier,
+          nonce: f.nonce,
+          next: safeNext(f.next),
+        }
       : null;
   } catch {
     return null;
   }
 }
 
-interface IdTokenClaims {
-  iss?: string;
-  aud?: string;
-  exp?: number;
-  sub?: string;
-  nonce?: string;
-  email?: string;
-  email_verified?: boolean | string;
-  name?: string;
-}
-
-export function createGoogleSignInService(
+export function createExternalSignInService(
   database: Database,
   sessions: SessionService,
-  config: GoogleSignInConfig | null,
+  configs: ExternalProviderConfigs,
 ) {
-  const doFetch = config?.fetch ?? fetch;
+  const configOf = (provider: ExternalProvider) => configs[provider] ?? null;
 
   /** The URL to send the person to, and the state to remember for their return. */
-  function begin(next: string | null | undefined) {
-    if (!config) throw new GoogleSignInError('failed');
-    const flow: GoogleFlowState = {
+  function begin(provider: ExternalProvider, next: string | null | undefined) {
+    const config = configOf(provider);
+    if (!config) throw new ExternalSignInError('failed');
+    const flow: ExternalFlowState = {
+      provider,
       state: newToken(),
       verifier: newToken(),
       nonce: newToken(),
       next: safeNext(next),
     };
-    const url = new URL(AUTHORIZE);
+    const url = new URL(SPECS[provider].authorizeUrl);
     url.search = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: config.redirectUri,
@@ -117,11 +172,17 @@ export function createGoogleSignInService(
     return { redirect: url.toString(), flow };
   }
 
-  async function exchange(code: string, flow: GoogleFlowState): Promise<IdTokenClaims> {
-    if (!config) throw new GoogleSignInError('failed');
+  async function exchange(
+    provider: ExternalProvider,
+    code: string,
+    flow: ExternalFlowState,
+  ): Promise<IdTokenClaims> {
+    const config = configOf(provider);
+    if (!config) throw new ExternalSignInError('failed');
+    const spec = SPECS[provider];
     let res: Response;
     try {
-      res = await doFetch(TOKEN, {
+      res = await (config.fetch ?? fetch)(spec.tokenUrl, {
         method: 'POST',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -135,9 +196,9 @@ export function createGoogleSignInService(
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
-      throw new GoogleSignInError('failed');
+      throw new ExternalSignInError('failed');
     }
-    if (!res.ok) throw new GoogleSignInError('failed');
+    if (!res.ok) throw new ExternalSignInError('failed');
     let claims: IdTokenClaims;
     try {
       const body = (await res.json()) as { id_token?: string };
@@ -145,33 +206,36 @@ export function createGoogleSignInService(
       if (!part) throw new Error('no id_token');
       claims = JSON.parse(Buffer.from(part, 'base64url').toString('utf8')) as IdTokenClaims;
     } catch {
-      throw new GoogleSignInError('failed');
+      throw new ExternalSignInError('failed');
     }
-    // The token came straight from Google's token endpoint over TLS, so OIDC Core §3.1.3.7 lets us skip checking its
-    // signature; we still check who issued it, who it is for, that it is fresh and that it answers this request.
-    if (claims.iss !== 'https://accounts.google.com' && claims.iss !== 'accounts.google.com')
-      throw new GoogleSignInError('failed');
-    if (claims.aud !== config.clientId) throw new GoogleSignInError('failed');
+    // The token came straight from the provider's token endpoint over TLS, so OIDC Core §3.1.3.7 lets us skip checking
+    // its signature; we still check who issued it, who it is for, that it is fresh and that it answers this request.
+    if (!spec.issuerOk(claims)) throw new ExternalSignInError('failed');
+    if (claims.aud !== config.clientId) throw new ExternalSignInError('failed');
     if (typeof claims.exp !== 'number' || claims.exp * 1000 < Date.now())
-      throw new GoogleSignInError('expired');
+      throw new ExternalSignInError('expired');
     if (!claims.nonce || !safeEqual(claims.nonce, flow.nonce))
-      throw new GoogleSignInError('failed');
-    if (!claims.sub || !claims.email) throw new GoogleSignInError('failed');
-    if (claims.email_verified !== true && claims.email_verified !== 'true')
-      throw new GoogleSignInError('unverified_email');
+      throw new ExternalSignInError('failed');
+    if (!claims.sub || !claims.email) throw new ExternalSignInError('failed');
     return claims;
   }
 
   /** Completes sign-in: returns the new web session. Creates the account on first use. */
   async function complete(
-    input: { code: string; state: string; flow: GoogleFlowState | null },
+    provider: ExternalProvider,
+    input: { code: string; state: string; flow: ExternalFlowState | null },
     meta: RequestMeta,
   ) {
     const { flow } = input;
-    if (!flow || !safeEqual(flow.state, input.state)) throw new GoogleSignInError('expired');
-    const claims = await exchange(input.code, flow);
+    if (!flow || flow.provider !== provider || !safeEqual(flow.state, input.state))
+      throw new ExternalSignInError('expired');
+    const claims = await exchange(provider, input.code, flow);
     const email = claims.email!.trim();
     const subject = claims.sub!;
+    const vouched = SPECS[provider].emailVouched(claims);
+    // Google refuses an address it does not vouch for. Microsoft lets the person in with one, but never joins it to
+    // an existing account, and the new account's address stays unverified.
+    if (!vouched && provider === 'google') throw new ExternalSignInError('unverified_email');
 
     const result = await database.withGlobalTx('identity', async (tx) => {
       const now = new Date();
@@ -183,13 +247,13 @@ export function createGoogleSignInService(
         .select()
         .from(externalIdentities)
         .where(
-          and(eq(externalIdentities.provider, 'google'), eq(externalIdentities.subject, subject)),
+          and(eq(externalIdentities.provider, provider), eq(externalIdentities.subject, subject)),
         )
         .limit(1);
       if (linked) {
         userId = linked.userId;
         const [u] = await tx.select().from(users).where(eq(users.id, userId)).limit(1);
-        if (!u || u.status !== 'active') throw new GoogleSignInError('account_disabled');
+        if (!u || u.status !== 'active') throw new ExternalSignInError('account_disabled');
         await tx
           .update(externalIdentities)
           .set({ lastUsedAt: now })
@@ -197,10 +261,12 @@ export function createGoogleSignInService(
       } else {
         const [existing] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
         if (existing) {
-          if (existing.status !== 'active') throw new GoogleSignInError('account_disabled');
+          if (existing.status !== 'active') throw new ExternalSignInError('account_disabled');
+          // An address the provider does not vouch for proves nothing about who owns the account.
+          if (!vouched) throw new ExternalSignInError('link_requires_sign_in');
           userId = existing.id;
-          // Anything beyond a password (a second factor, a passkey) on a verified account must not be bypassed by a
-          // Google sign-in: the person signs in the usual way and links Google from their account instead.
+          // Anything beyond a password (a second factor, a passkey) on a verified account must not be bypassed by an
+          // outside sign-in: the person signs in the usual way and links the provider from their account instead.
           const creds = await tx
             .select({ type: credentials.type })
             .from(credentials)
@@ -208,10 +274,10 @@ export function createGoogleSignInService(
           // Only for an account whose address was proven: on an unverified one a factor may have been added by the
           // squatter, and the takeover below removes it.
           if (existing.emailVerifiedAt && creds.some((c) => c.type !== 'password'))
-            throw new GoogleSignInError('link_requires_sign_in');
+            throw new ExternalSignInError('link_requires_sign_in');
           if (!existing.emailVerifiedAt) {
-            // Sign-up does not verify addresses, so someone else may have registered this one. Google has just proved
-            // this person owns it, so everything the squatter could hold goes: credentials, sessions, API tokens.
+            // Sign-up does not verify addresses, so someone else may have registered this one. The provider has just
+            // vouched for this person, so everything the squatter could hold goes: credentials, sessions, API tokens.
             const gone = await tx
               .delete(credentials)
               .where(eq(credentials.userId, userId))
@@ -241,13 +307,13 @@ export function createGoogleSignInService(
             name: (claims.name ?? email.split('@')[0] ?? email).trim().slice(0, 200),
             locale: 'en-AU',
             status: 'active',
-            emailVerifiedAt: now,
+            ...(vouched ? { emailVerifiedAt: now } : {}),
           });
         }
         await tx.insert(externalIdentities).values({
           id: uuidv7(),
           userId,
-          provider: 'google',
+          provider,
           subject,
           email,
           lastUsedAt: now,
@@ -256,7 +322,7 @@ export function createGoogleSignInService(
       await tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, userId));
       await recordSecurityEvent(tx, {
         orgId: null,
-        action: created ? 'auth.signup.google' : 'auth.login.succeeded',
+        action: created ? `auth.signup.${provider}` : 'auth.login.succeeded',
         actorType: 'user',
         actorId: userId,
         targetType: 'account',
@@ -264,12 +330,12 @@ export function createGoogleSignInService(
         ip: meta.ip,
         userAgent: meta.userAgent,
         client: 'web',
-        metadata: { method: 'google', ...(unlinkedPassword ? { passwordRemoved: true } : {}) },
+        metadata: { method: provider, ...(unlinkedPassword ? { passwordRemoved: true } : {}) },
       });
       const session = await sessions.create(tx, {
         userId,
         client: 'web',
-        authMethod: 'google',
+        authMethod: provider,
         // Not earlier than the cut-off written above, or the new session would count as one the cut-off ended.
         authTime: now,
         ip: meta.ip,
@@ -285,17 +351,21 @@ export function createGoogleSignInService(
 
   /** Same as `complete`, but a refusal is written to the security log (no account is named). */
   async function completeLogged(
-    input: { code: string; state: string; flow: GoogleFlowState | null },
+    provider: ExternalProvider,
+    input: { code: string; state: string; flow: ExternalFlowState | null },
     meta: RequestMeta,
   ) {
     // Nothing is written for a callback that never began here (no cookie, wrong state): anyone can send those, and the
     // log is append-only. Only failures after the flow was validated are recorded.
-    const validated = input.flow !== null && safeEqual(input.flow.state, input.state);
+    const validated =
+      input.flow !== null &&
+      input.flow.provider === provider &&
+      safeEqual(input.flow.state, input.state);
     try {
-      return await complete(input, meta);
+      return await complete(provider, input, meta);
     } catch (e) {
       if (!validated) throw e;
-      const reason = e instanceof GoogleSignInError ? e.reason : 'error';
+      const reason = e instanceof ExternalSignInError ? e.reason : 'error';
       await database
         .withGlobalTx('identity', (tx) =>
           recordSecurityEvent(tx, {
@@ -304,12 +374,12 @@ export function createGoogleSignInService(
             actorType: 'anonymous',
             actorId: null,
             targetType: 'account',
-            // A constant, so the per-target cap on failed sign-ins applies.
-            targetId: 'google',
+            // A constant per provider, so the per-target cap on failed sign-ins applies.
+            targetId: provider,
             ip: meta.ip,
             userAgent: meta.userAgent,
             client: 'web',
-            metadata: { method: 'google', reason },
+            metadata: { method: provider, reason },
           }),
         )
         .catch(() => undefined);
@@ -318,12 +388,15 @@ export function createGoogleSignInService(
   }
 
   return {
-    enabled: config !== null,
+    enabled: (provider: ExternalProvider) => configOf(provider) !== null,
     /** The web origin the person returns to. */
-    origin: config ? new URL(config.redirectUri).origin : null,
+    origin: (provider: ExternalProvider) => {
+      const c = configOf(provider);
+      return c ? new URL(c.redirectUri).origin : null;
+    },
     begin,
     complete: completeLogged,
   };
 }
 
-export type GoogleSignInService = ReturnType<typeof createGoogleSignInService>;
+export type ExternalSignInService = ReturnType<typeof createExternalSignInService>;

@@ -2,7 +2,10 @@ import { defineModule, type KernelServices } from '@archova/kernel';
 import { createAccountService } from './application/accounts';
 import { createApiTokenService } from './application/api-tokens';
 import { APP_ACCESS_PREFIX, TOKEN_PREFIX } from './domain/api-scopes';
-import { createGoogleSignInService, type GoogleSignInConfig } from './application/google-signin';
+import {
+  createExternalSignInService,
+  type ExternalProviderConfigs,
+} from './application/external-signin';
 import { createOAuthService } from './application/oauth';
 import { createPartnerAppService, type PartnerAppsDeps } from './application/partner-apps';
 import { createSessionService } from './application/sessions';
@@ -15,8 +18,8 @@ export interface IdentityConfig extends TokenConfig {
   auditPepper: string;
   /** Third-party partner apps (integrations/06). Off unless `enabled`; `notifyAdmins` is wired by the composition root. */
   partnerApps?: Partial<PartnerAppsDeps>;
-  /** "Continue with Google" sign-in. Off (the button is hidden) unless set. */
-  googleSignIn?: GoogleSignInConfig | null;
+  /** "Continue with Google / Microsoft" sign-in. A provider is off (its button hidden) unless set. */
+  externalSignIn?: ExternalProviderConfigs;
 }
 
 /** Composition root for the identity module (global layer, ADR-0005). */
@@ -32,17 +35,17 @@ export async function createIdentityModule(services: KernelServices, config: Ide
     ...(config.partnerApps?.now ? { now: config.partnerApps.now } : {}),
   });
   const oauth = createOAuthService(services.database, sessions, signer, partnerApps);
-  const google = createGoogleSignInService(
+  const external = createExternalSignInService(
     services.database,
     sessions,
-    config.googleSignIn ?? null,
+    config.externalSignIn ?? {},
   );
   const apiTokens = createApiTokenService(services.database);
   const routes = identityRoutes({
     accounts,
     sessions,
     oauth,
-    google,
+    external,
     apiTokens,
     partnerApps,
     webSignInUrl: config.webSignInUrl,

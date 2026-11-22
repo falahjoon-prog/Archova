@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { webRoutes } from '@archova/routes';
 import { Card, PageHeader } from '@archova/ui';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { ExternalSignInButtons } from '../components/ExternalSignInButtons';
 import { SignupForm } from '../forms/SignupForm';
 import { useRedirectAfterSignIn } from '../hooks/useRedirectAfterSignIn';
 
@@ -17,7 +17,7 @@ export function SignupScreen({ next }: { next?: string }) {
       />
       <Card>
         <div className="stack">
-          <GoogleSignInButton {...(next ? { next } : {})} />
+          <ExternalSignInButtons {...(next ? { next } : {})} />
           <SignupForm onSignedUp={redirect} />
         </div>
       </Card>

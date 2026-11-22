@@ -120,9 +120,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [google]
+                required: [google, microsoft]
                 properties:
                   google: { type: boolean }
+                  microsoft: { type: boolean }
         default: { $ref: '#/components/responses/Problem' }
   /v1/auth/google/start:
     get:
@@ -149,6 +150,38 @@ paths:
       x-module: identity
       x-auth: none
       summary: Where Google sends the person back. Starts a web session (creating the account on first use) and redirects into the app, or back to the sign-in page with `?error=` when it fails.
+      parameters:
+        - { name: code, in: query, required: false, schema: { type: string, maxLength: 2000 } }
+        - { name: state, in: query, required: false, schema: { type: string, maxLength: 512 } }
+        - { name: error, in: query, required: false, schema: { type: string, maxLength: 200 } }
+      responses:
+        '302': { description: 'Redirect into the app; `__Host-sid` and `__Host-csrf` cookies set' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/microsoft/start:
+    get:
+      operationId: microsoftSignInStart
+      tags: [auth]
+      x-module: identity
+      x-auth: none
+      summary: Start "Continue with Microsoft". Redirects to Microsoft; the browser returns at the callback.
+      parameters:
+        - {
+            name: next,
+            in: query,
+            required: false,
+            description: 'Same-origin path to open after sign-in.',
+            schema: { type: string, maxLength: 2000 },
+          }
+      responses:
+        '302': { description: Redirect to Microsoft }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/microsoft/callback:
+    get:
+      operationId: microsoftSignInCallback
+      tags: [auth]
+      x-module: identity
+      x-auth: none
+      summary: Where Microsoft sends the person back. Starts a web session (creating the account on first use) and redirects into the app, or back to the sign-in page with `?error=` when it fails.
       parameters:
         - { name: code, in: query, required: false, schema: { type: string, maxLength: 2000 } }
         - { name: state, in: query, required: false, schema: { type: string, maxLength: 512 } }

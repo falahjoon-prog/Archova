@@ -5,7 +5,7 @@ export interface Principal {
   userId: string;
   sessionId: string;
   client: 'web' | 'ios' | 'android' | 'api';
-  authMethod: 'password' | 'passkey' | 'sso' | 'oauth' | 'google' | 'api_token';
+  authMethod: 'password' | 'passkey' | 'sso' | 'oauth' | 'google' | 'microsoft' | 'api_token';
   authTime: Date;
   /**
    * Set when the caller used a personal access token or a partner app token: it works in one org and only within
