@@ -36561,6 +36561,13 @@ components:
           { type: [string, 'null'], format: date, description: The deadline, if the step has one. }
         doneOn:
           { type: [string, 'null'], format: date, description: The day it happened, if it has. }
+        suggestedOn:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: A date worked out from the rules,
+            shown beside one typed from a notice and never instead of it. Only for states whose rules a lawyer has signed off.,
+          }
         status: { type: string, enum: [done, upcoming, due_soon, overdue, closed] }
         note: { type: [string, 'null'] }
     ClaimStatement:
@@ -36578,6 +36585,8 @@ components:
         [
           noticeServedOn,
           applicationLodgedOn,
+          applicationReceivedOn,
+          acceptanceNoticeReceivedOn,
           nominatingAuthority,
           adjudicatorName,
           adjudicatorAppointedOn,
@@ -36588,11 +36597,14 @@ components:
           adjudicatedAmount,
           outcome,
           notes,
+          version,
           updatedAt,
         ]
       properties:
         noticeServedOn: { type: [string, 'null'], format: date }
         applicationLodgedOn: { type: [string, 'null'], format: date }
+        applicationReceivedOn: { type: [string, 'null'], format: date }
+        acceptanceNoticeReceivedOn: { type: [string, 'null'], format: date }
         nominatingAuthority: { type: [string, 'null'], maxLength: 200 }
         adjudicatorName: { type: [string, 'null'], maxLength: 200 }
         adjudicatorAppointedOn: { type: [string, 'null'], format: date }
@@ -36627,6 +36639,8 @@ components:
           }
         noticeServedOn: { type: [string, 'null'], format: date }
         applicationLodgedOn: { type: [string, 'null'], format: date }
+        applicationReceivedOn: { type: [string, 'null'], format: date }
+        acceptanceNoticeReceivedOn: { type: [string, 'null'], format: date }
         nominatingAuthority: { type: [string, 'null'], maxLength: 200 }
         adjudicatorName: { type: [string, 'null'], maxLength: 200 }
         adjudicatorAppointedOn: { type: [string, 'null'], format: date }

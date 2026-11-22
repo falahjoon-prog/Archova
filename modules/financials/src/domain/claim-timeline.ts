@@ -1,10 +1,12 @@
 import {
   SOPA_RULES,
   adjudicationDeadline,
+  decisionDue,
+  responseDue,
   noScheduleAdjudication,
   ruleInForce,
 } from '@archova/domain';
-import type { SopaState } from '@archova/domain';
+import type { SopaRule, SopaState } from '@archova/domain';
 import { compareLocalDates, localDateOf, type LocalDate } from '@archova/time';
 import { PUBLIC_HOLIDAYS } from './holidays';
 import type { AdjudicationFacts } from './adjudication';
@@ -36,6 +38,8 @@ export interface TimelineStep {
   dueOn: LocalDate | null;
   /** The day it happened, when it has. */
   doneOn: LocalDate | null;
+  /** A date worked out from the rules, shown beside (never instead of) one typed from a notice. Null if none. */
+  suggestedOn?: LocalDate | null;
   status: TimelineStatus;
   note: string | null;
 }
@@ -54,6 +58,8 @@ export interface TimelineInput {
   timeZone: string;
   /** What staff have recorded once adjudication began. Optional: the timeline works without it. */
   adjudication?: AdjudicationFacts | null;
+  /** The rule rows to read; the seeded rows unless a test or a preview supplies others. */
+  rules?: readonly SopaRule[];
 }
 
 /** Days that count as "soon" for a deadline. */
@@ -72,7 +78,7 @@ export function claimTimeline(input: TimelineInput): TimelineStep[] {
   if (!input.isValid || !input.servedOn || !input.scheduleDueOn || !input.paymentDueOn) return [];
   const { today } = input;
   const rule = input.ruleState
-    ? ruleInForce(SOPA_RULES, input.ruleState as SopaState, input.servedOn)
+    ? ruleInForce(input.rules ?? SOPA_RULES, input.ruleState as SopaState, input.servedOn)
     : null;
   const holidays = rule ? PUBLIC_HOLIDAYS[rule.state] : new Set<string>();
   const adj = input.adjudication ?? null;
@@ -192,7 +198,7 @@ export function claimTimeline(input: TimelineInput): TimelineStep[] {
         note: 'Runs from the later of the payment due date and the last day for a schedule.',
       });
   }
-  if (adj) steps.push(...adjudicationSteps(adj, steps, today));
+  if (adj) steps.push(...adjudicationSteps(adj, steps, today, rule, holidays));
   return steps;
 }
 
@@ -207,6 +213,8 @@ function adjudicationSteps(
   adj: AdjudicationFacts,
   earlier: readonly TimelineStep[],
   today: LocalDate,
+  rule: SopaRule,
+  holidays: ReadonlySet<LocalDate>,
 ): TimelineStep[] {
   if (!adj.applicationLodgedOn) return [];
   const out: TimelineStep[] = [];
@@ -235,25 +243,51 @@ function adjudicationSteps(
     status: adj.adjudicatorAppointedOn || ended ? 'done' : 'upcoming',
     note: adj.nominatingAuthority ? `Nominated by ${adj.nominatingAuthority}.` : null,
   });
+  // Suggested dates (compliance/01b): only for states whose rule row a lawyer has signed off, only from the
+  // recorded clock-start days, and never in place of a date typed from the adjudicator's notice.
+  const signedOff = rule.verifiedBy !== null;
+  const resp =
+    signedOff && adj.applicationReceivedOn
+      ? responseDue({
+          rule,
+          holidays,
+          applicationReceivedOn: adj.applicationReceivedOn,
+          acceptanceReceivedOn: adj.acceptanceNoticeReceivedOn,
+        })
+      : null;
+  const decisionFrom = adj.responseLodgedOn ?? adj.responseDueOn ?? resp?.dueOn ?? null;
+  const decision = signedOff && decisionFrom ? decisionDue(rule, holidays, decisionFrom) : null;
+  const suggestion = (typed: LocalDate | null, suggested: LocalDate | null, floor = false) => {
+    if (!suggested) return typed ? 'Due date as given in the adjudicator’s notice.' : null;
+    const base = floor
+      ? `The rules give at least ${suggested}; it can move later once the acceptance notice is known.`
+      : `The rules suggest ${suggested}.`;
+    if (!typed) return `${base} Enter the date from the adjudicator’s notice.`;
+    return typed === suggested
+      ? 'Due date as given in the adjudicator’s notice. It matches the rules.'
+      : `Due date as given in the adjudicator’s notice. The rules suggest ${suggested}: check the notice.`;
+  };
   out.push({
     key: 'adjudication_response',
     label: 'Response to the application',
     dueOn: adj.responseDueOn,
     doneOn: adj.responseLodgedOn,
+    suggestedOn: resp?.dueOn ?? null,
     status: open(adj.responseDueOn, adj.responseLodgedOn),
-    note: adj.responseDueOn
-      ? 'Due date as given in the adjudicator’s notice.'
-      : 'Enter the due date from the adjudicator’s notice. The Act sets it from when the application is received or accepted.',
+    note:
+      suggestion(adj.responseDueOn, resp?.dueOn ?? null, resp ? !resp.final : false) ??
+      'Enter the due date from the adjudicator’s notice. The Act sets it from when the application is received or accepted.',
   });
   out.push({
     key: 'adjudication_determination',
     label: 'Determination',
     dueOn: adj.determinationDueOn,
     doneOn: adj.determinedOn,
+    suggestedOn: decision,
     status: open(adj.determinationDueOn, adj.determinedOn),
-    note: adj.determinationDueOn
-      ? 'Due date as given in the adjudicator’s notice.'
-      : 'Enter the due date from the adjudicator’s notice.',
+    note:
+      suggestion(adj.determinationDueOn, decision) ??
+      'Enter the due date from the adjudicator’s notice.',
   });
   return out;
 }

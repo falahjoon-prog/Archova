@@ -136,6 +136,8 @@ export function financialsRoutes(
       ? {
           noticeServedOn: d.adjudication.noticeServedOn,
           applicationLodgedOn: d.adjudication.applicationLodgedOn,
+          applicationReceivedOn: d.adjudication.applicationReceivedOn,
+          acceptanceNoticeReceivedOn: d.adjudication.acceptanceNoticeReceivedOn,
           nominatingAuthority: d.adjudication.nominatingAuthority,
           adjudicatorName: d.adjudication.adjudicatorName,
           adjudicatorAppointedOn: d.adjudication.adjudicatorAppointedOn,
@@ -812,6 +814,8 @@ export function financialsRoutes(
               {
                 noticeServedOn: b.noticeServedOn ?? null,
                 applicationLodgedOn: b.applicationLodgedOn ?? null,
+                applicationReceivedOn: b.applicationReceivedOn ?? null,
+                acceptanceNoticeReceivedOn: b.acceptanceNoticeReceivedOn ?? null,
                 nominatingAuthority: b.nominatingAuthority ?? null,
                 adjudicatorName: b.adjudicatorName ?? null,
                 adjudicatorAppointedOn: b.adjudicatorAppointedOn ?? null,
