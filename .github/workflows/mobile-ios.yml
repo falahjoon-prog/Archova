@@ -25,7 +25,7 @@ permissions:
 jobs:
   ipa:
     name: Build unsigned iOS app
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 90
     env:
       APP_VARIANT: preview
@@ -33,6 +33,15 @@ jobs:
       EXPO_PUBLIC_APP_ORIGIN: ${{ inputs.app_origin || 'https://answers-sodium-alternate-automation.trycloudflare.com' }}
     steps:
       - uses: actions/checkout@v4
+      # One of the iOS packages needs Swift tools 6.2 or newer, so use the newest Xcode on the machine.
+      - name: Select the newest Xcode
+        run: |
+          set -euo pipefail
+          xcode="$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"
+          echo "Using $xcode"
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          swift --version
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
