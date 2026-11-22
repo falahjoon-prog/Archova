@@ -1,0 +1,62 @@
+# Unsigned iPhone test build (no Apple developer account needed). Run it by hand from the Actions tab; the file is the
+# "archova-ios-ipa" artifact on the run page. It is NOT signed, so it will not install by itself: sideload it onto an
+# iPhone with Sideloadly (Windows or Mac) using a free Apple ID, which signs it for 7 days. For testing only.
+# Runs on a GitHub-hosted macOS runner (macOS minutes cost ten times Linux minutes on a paid plan).
+name: Mobile iOS (unsigned)
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: API origin the app talks to
+        required: true
+      app_origin:
+        description: Web app origin that hosts the sign-in page
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    name: Build unsigned iOS app
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      APP_VARIANT: preview
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url }}
+      EXPO_PUBLIC_APP_ORIGIN: ${{ inputs.app_origin }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate the native iOS project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform ios
+      - name: Build without signing
+        working-directory: apps/mobile/ios
+        run: |
+          set -euo pipefail
+          workspace="$(ls -d *.xcworkspace | head -n 1)"
+          scheme="${workspace%.xcworkspace}"
+          xcodebuild -workspace "$workspace" -scheme "$scheme" -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tail -n 40
+      - name: Package the .ipa
+        working-directory: apps/mobile/ios
+        run: |
+          set -euo pipefail
+          app="$(ls -d build/Build/Products/Release-iphoneos/*.app | head -n 1)"
+          rm -rf Payload && mkdir Payload && cp -R "$app" Payload/
+          zip -qry archova-unsigned.ipa Payload
+          ls -la archova-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archova-ios-ipa
+          path: apps/mobile/ios/archova-unsigned.ipa
+          if-no-files-found: error
