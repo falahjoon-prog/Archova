@@ -48,10 +48,14 @@ jobs:
           set -euo pipefail
           workspace="$(ls -d *.xcworkspace | head -n 1)"
           scheme="${workspace%.xcworkspace}"
-          xcodebuild -workspace "$workspace" -scheme "$scheme" -configuration Release \
+          if ! xcodebuild -workspace "$workspace" -scheme "$scheme" -configuration Release \
             -sdk iphoneos -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build | tail -n 40
+            build > xcodebuild.log 2>&1; then
+            echo "xcodebuild failed. Errors:"
+            grep -n -B2 -A6 "error:" xcodebuild.log | head -n 120
+            exit 1
+          fi
       - name: Package the .ipa
         working-directory: apps/mobile/ios
         run: |
