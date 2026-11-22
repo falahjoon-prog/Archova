@@ -29,7 +29,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
       --filter '@archova/api...' --filter '@archova/web...' --filter '@archova/worker...' --filter '@archova/tools' --filter archova
 
 COPY . .
-RUN pnpm turbo run build --filter=@archova/api --filter=@archova/web --filter=@archova/worker \
+RUN pnpm turbo run build --env-mode=loose --filter=@archova/api --filter=@archova/web --filter=@archova/worker \
  && pnpm --filter @archova/tools exec node db/build.mjs
 
 # The packages left outside the bundle (apps/api/build.mjs), at the versions the lockfile resolved.
