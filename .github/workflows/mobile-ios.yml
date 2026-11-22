@@ -20,7 +20,7 @@ on:
         required: false
 
 permissions:
-  contents: read
+  contents: write # publishes the .ipa to the ios-test-latest release
 
 jobs:
   ipa:
@@ -65,3 +65,13 @@ jobs:
           name: archova-ios-ipa
           path: apps/mobile/ios/archova-unsigned.ipa
           if-no-files-found: error
+      # Stable download link for the website: one pre-release whose single asset is replaced on every run.
+      - name: Publish to the ios-test-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp apps/mobile/ios/archova-unsigned.ipa archova-ios-test.ipa
+          gh release view ios-test-latest >/dev/null 2>&1 || gh release create ios-test-latest \
+            --prerelease --title "iPhone test build" \
+            --notes "Latest unsigned iPhone test build. Sideload with Sideloadly using a free Apple ID (7 days). Replaced by each Mobile iOS run."
+          gh release upload ios-test-latest archova-ios-test.ipa --clobber
