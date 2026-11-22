@@ -76,7 +76,7 @@ export function CompanyContactsCard({
         </p>
       ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table table--stacked">
             <caption className="u-visually-hidden">Company contacts</caption>
             <thead>
               <tr>
@@ -96,18 +96,20 @@ export function CompanyContactsCard({
               {shown.map((c) => (
                 <tr key={c.id}>
                   <th scope="row">{c.name}</th>
-                  <td>{c.jobTitle ?? '—'}</td>
-                  <td>{companies.get(c.companyId) ?? '—'}</td>
-                  <td>
+                  <td data-label="Title">{c.jobTitle ?? '—'}</td>
+                  <td data-label="Company">{companies.get(c.companyId) ?? '—'}</td>
+                  <td data-label="Phone">
                     {c.phone ? (
                       <a href={`tel:${c.phone.replace(/[^+\d]/g, '')}`}>{c.phone}</a>
                     ) : (
                       '—'
                     )}
                   </td>
-                  <td>{c.email ? <a href={`mailto:${c.email}`}>{c.email}</a> : '—'}</td>
+                  <td data-label="Email">
+                    {c.email ? <a href={`mailto:${c.email}`}>{c.email}</a> : '—'}
+                  </td>
                   {canManage ? (
-                    <td>
+                    <td data-label="">
                       <Button variant="tertiary" size="sm" onClick={() => setEditing(c)}>
                         Edit<span className="u-visually-hidden"> {c.name}</span>
                       </Button>
