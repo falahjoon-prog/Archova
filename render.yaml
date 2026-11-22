@@ -1,5 +1,5 @@
 # Free online test deployment of the api (Render free plan; nearest region is Singapore, so sample data only).
-# The database is Supabase (Sydney); the web app is on Vercel and forwards /v1/* here. Not used for production.
+# The database is Supabase (Sydney); the web app (archova-web) forwards /v1/* here. Not used for production.
 services:
   - type: web
     name: archova-api
@@ -37,6 +37,16 @@ services:
         value: log
       - key: LOG_LEVEL
         value: info
+  - type: web
+    name: archova-web
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile.render-web
+    dockerContext: .
+    envVars:
+      - key: WEB_API_INTERNAL_URL
+        value: https://archova-api.onrender.com
   - type: keyvalue
     name: archova-cache
     plan: free

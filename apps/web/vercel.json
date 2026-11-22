@@ -1,8 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
-    { "source": "/v1/:path*", "destination": "https://archova-api.onrender.com/v1/:path*" },
-    { "source": "/.well-known/:path*", "destination": "https://archova-api.onrender.com/.well-known/:path*" },
-    { "source": "/health/:path*", "destination": "https://archova-api.onrender.com/health/:path*" }
-  ]
-}
