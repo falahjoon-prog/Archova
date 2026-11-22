@@ -358,6 +358,8 @@ button.inbox-link {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .app-shell__nav-link {
+    /* Touch target: 44px, not the 36px desktop height. */
+    min-height: 44px;
     width: 100%;
     /* Left-aligned so every label starts on the same line, with or without a caret. */
     justify-content: flex-start;
@@ -373,6 +375,26 @@ button.inbox-link {
 @media (max-width: 480px) {
   .app-shell__org {
     display: none;
+  }
+  /* Five 44px controls plus the wordmark only fit one row at 375px as icons, with the targets themselves as spacing. */
+  .app-shell__actions {
+    gap: 0;
+  }
+  .app-shell__assistant-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .sign-out__button {
+    min-width: 44px;
+    padding: 0;
+  }
+  .sign-out__label {
+    display: none;
+  }
+  .sign-out__icon {
+    display: block;
   }
   /* Narrow padding so the logo, Ask Nova, inbox and Sign out all fit on one row at 375px. */
   .app-shell__actions > button,
@@ -442,6 +464,9 @@ button.inbox-link {
 .assistant-panel__body {
   margin: 0;
   color: var(--c-text-secondary);
+}
+.sign-out__icon {
+  display: none;
 }
 .sign-out {
   display: flex;

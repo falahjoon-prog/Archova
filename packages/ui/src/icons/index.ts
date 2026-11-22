@@ -1,6 +1,7 @@
 // The one icon set (design 02 §6): Lucide outline icons, 20 px on web, 1.5 px stroke. Each module has a fixed
 // icon so people learn "the RFI icon" once; screens import module icons from here, not from lucide directly.
 export {
+  LogOut,
   Monitor,
   Moon,
   Sun,
