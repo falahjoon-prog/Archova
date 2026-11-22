@@ -100,6 +100,9 @@ const Env = z.object({
   API_GOOGLE_SIGNIN_REDIRECT_URI: z.string().url().optional(),
   // "Continue with Microsoft" sign-in: a multi-tenant Entra app registration (personal and work accounts).
   // The redirect URI defaults to `<first API_APP_ORIGINS entry>/v1/auth/microsoft/callback`.
+  // Work tenants must add the `xms_edov` optional claim to the app's ID token, or their users are refused (an unverified
+  // address never creates or joins an account). Microsoft's `sub` is per app registration: changing the client id orphans
+  // every existing link.
   API_MICROSOFT_SIGNIN_CLIENT_ID: z.string().optional(),
   API_MICROSOFT_SIGNIN_CLIENT_SECRET: z.string().optional(),
   API_MICROSOFT_SIGNIN_REDIRECT_URI: z.string().url().optional(),
