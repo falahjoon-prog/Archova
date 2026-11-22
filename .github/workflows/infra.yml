@@ -63,7 +63,7 @@ jobs:
         run: |
           tflint --init
           tflint --recursive --config "$PWD/.tflint.hcl" --format compact
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: checkov
