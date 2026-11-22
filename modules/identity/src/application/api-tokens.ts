@@ -199,7 +199,7 @@ export function createApiTokenService(database: Database, now: () => Date = () =
           and(
             eq(apiTokens.tokenHash, hash),
             eq(users.status, 'active'),
-            // Tokens made before a takeover of an unverified account was cut off are dead (google-signin.ts).
+            // Tokens made before a takeover of an unverified account was cut off are dead (external-signin.ts).
             or(isNull(users.credentialsResetAt), gt(apiTokens.createdAt, users.credentialsResetAt)),
           ),
         )

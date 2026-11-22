@@ -13,13 +13,14 @@ import type { PartnerAppService } from '../application/partner-apps';
 import type { ApiTokenService } from '../application/api-tokens';
 import type { AccountService } from '../application/accounts';
 import {
-  GOOGLE_FLOW_COOKIE,
-  GOOGLE_FLOW_MAX_AGE_S,
-  GoogleSignInError,
+  EXTERNAL_FLOW_COOKIE,
+  EXTERNAL_FLOW_MAX_AGE_S,
+  ExternalSignInError,
   decodeFlow,
   encodeFlow,
-  type GoogleSignInService,
-} from '../application/google-signin';
+  type ExternalProvider,
+  type ExternalSignInService,
+} from '../application/external-signin';
 import type { OAuthService } from '../application/oauth';
 import type { SessionService } from '../application/sessions';
 import { toApiTokenDto, toAppInstallDto, toOauthAppDto, toUserDto } from './mappers';
@@ -28,7 +29,7 @@ export interface IdentityRouteDeps {
   accounts: AccountService;
   sessions: SessionService;
   oauth: OAuthService;
-  google: GoogleSignInService;
+  external: ExternalSignInService;
   apiTokens: ApiTokenService;
   partnerApps: PartnerAppService;
   /** Web sign-in page; unauthenticated /oauth/authorize requests are sent here with `next`. */
@@ -50,11 +51,87 @@ export function identityRoutes({
   accounts,
   sessions,
   oauth,
-  google,
+  external,
   apiTokens,
   partnerApps,
   webSignInUrl,
 }: IdentityRouteDeps) {
+  const externalStart = async (provider: ExternalProvider, next: string | undefined) => {
+    if (!external.enabled(provider)) {
+      const url = new URL(webSignInUrl);
+      url.searchParams.set('error', `${provider}_unavailable`);
+      return { status: 302, redirect: url.toString() };
+    }
+    const { redirect, flow } = external.begin(provider, next);
+    return {
+      status: 302,
+      redirect,
+      setCookies: [
+        {
+          name: EXTERNAL_FLOW_COOKIE,
+          value: encodeFlow(flow),
+          httpOnly: true,
+          maxAgeSeconds: EXTERNAL_FLOW_MAX_AGE_S,
+        },
+      ],
+    };
+  };
+
+  const externalCallback = async (
+    provider: ExternalProvider,
+    {
+      query,
+      cookies,
+      ip,
+      userAgent,
+    }: {
+      query: { code?: string; state?: string; error?: string };
+      cookies: Record<string, string | undefined>;
+      ip: string | null;
+      userAgent: string | null;
+    },
+  ) => {
+    const fail = (reason: string) => {
+      const url = new URL(webSignInUrl);
+      url.searchParams.set('error', `${provider}_${reason}`);
+      return {
+        status: 302,
+        redirect: url.toString(),
+        clearCookies: [EXTERNAL_FLOW_COOKIE],
+        headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
+      };
+    };
+    const origin = external.origin(provider);
+    if (!external.enabled(provider) || !origin) return fail('unavailable');
+    // The provider sends `error=access_denied` when the person presses Cancel.
+    if (query.error) return fail('cancelled');
+    if (!query.code || !query.state) return fail('failed');
+    try {
+      const { session, next } = await external.complete(
+        provider,
+        {
+          code: query.code,
+          state: query.state,
+          flow: decodeFlow(cookies[EXTERNAL_FLOW_COOKIE]),
+        },
+        { ip, userAgent },
+      );
+      return {
+        status: 302,
+        redirect: new URL(next ?? '/orgs', origin).toString(),
+        setCookies: sessionCookies(session.token!, newToken()),
+        clearCookies: [EXTERNAL_FLOW_COOKIE],
+        headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
+      };
+    } catch (e) {
+      // Which emails already have an account is not for the browser to learn: that refusal looks like any failure
+      // here, and the reason stays in the security log.
+      if (e instanceof ExternalSignInError)
+        return fail(e.reason === 'link_requires_sign_in' ? 'failed' : e.reason);
+      throw e;
+    }
+  };
+
   /** Partner app administration needs a person signed in to the app, recently, and a plan with API access. */
   const appAdmin = (
     input: Parameters<typeof requireTenant>[0] & Parameters<typeof requirePrincipal>[0],
@@ -218,64 +295,14 @@ export function identityRoutes({
         setCookies: sessionCookies(session.token!, csrf),
       };
     },
-    getAuthProviders: async () => ({ status: 200, body: { google: google.enabled } }),
-    googleSignInStart: async ({ query }) => {
-      const failed = (reason: string) => {
-        const url = new URL(webSignInUrl);
-        url.searchParams.set('error', reason);
-        return { status: 302, redirect: url.toString() };
-      };
-      if (!google.enabled) return failed('google_unavailable');
-      const { redirect, flow } = google.begin(query.next);
-      return {
-        status: 302,
-        redirect,
-        setCookies: [
-          {
-            name: GOOGLE_FLOW_COOKIE,
-            value: encodeFlow(flow),
-            httpOnly: true,
-            maxAgeSeconds: GOOGLE_FLOW_MAX_AGE_S,
-          },
-        ],
-      };
-    },
-    googleSignInCallback: async ({ query, cookies, ip, userAgent }) => {
-      const fail = (reason: string) => {
-        const url = new URL(webSignInUrl);
-        url.searchParams.set('error', `google_${reason}`);
-        return {
-          status: 302,
-          redirect: url.toString(),
-          clearCookies: [GOOGLE_FLOW_COOKIE],
-          headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
-        };
-      };
-      if (!google.enabled || !google.origin) return fail('unavailable');
-      // Google sends `error=access_denied` when the person presses Cancel.
-      if (query.error) return fail('cancelled');
-      if (!query.code || !query.state) return fail('failed');
-      try {
-        const { session, next } = await google.complete(
-          {
-            code: query.code,
-            state: query.state,
-            flow: decodeFlow(cookies[GOOGLE_FLOW_COOKIE]),
-          },
-          { ip, userAgent },
-        );
-        return {
-          status: 302,
-          redirect: new URL(next ?? '/orgs', google.origin).toString(),
-          setCookies: sessionCookies(session.token!, newToken()),
-          clearCookies: [GOOGLE_FLOW_COOKIE],
-          headers: { 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' },
-        };
-      } catch (e) {
-        if (e instanceof GoogleSignInError) return fail(e.reason);
-        throw e;
-      }
-    },
+    getAuthProviders: async () => ({
+      status: 200,
+      body: { google: external.enabled('google'), microsoft: external.enabled('microsoft') },
+    }),
+    googleSignInStart: ({ query }) => externalStart('google', query.next),
+    googleSignInCallback: (input) => externalCallback('google', input),
+    microsoftSignInStart: ({ query }) => externalStart('microsoft', query.next),
+    microsoftSignInCallback: (input) => externalCallback('microsoft', input),
     logout: async (input) => {
       const principal = requirePrincipal(input);
       await sessions.revoke(principal.sessionId);

@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { webRoutes } from '@archova/routes';
 import { Alert, Card, PageHeader } from '@archova/ui';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
-import { googleErrorMessage } from '../lib/google-errors';
+import { ExternalSignInButtons } from '../components/ExternalSignInButtons';
+import { externalErrorMessage, externalErrorProvider } from '../lib/external-errors';
 import { LoginForm } from '../forms/LoginForm';
 import { useRedirectAfterSignIn } from '../hooks/useRedirectAfterSignIn';
 
 export function LoginScreen({ next, error }: { next?: string; error?: string }) {
-  const googleError = googleErrorMessage(error);
+  const externalError = externalErrorMessage(error);
   const redirect = useRedirectAfterSignIn(next);
   const signupHref = next
     ? `${webRoutes.signup()}?next=${encodeURIComponent(next)}`
@@ -22,12 +22,15 @@ export function LoginScreen({ next, error }: { next?: string; error?: string }) 
       />
       <Card>
         <div className="stack">
-          {googleError ? (
-            <Alert tone="danger" title="We couldn't sign you in with Google">
-              {googleError}
+          {externalError ? (
+            <Alert
+              tone="danger"
+              title={`We couldn't sign you in with ${externalErrorProvider(error)}`}
+            >
+              {externalError}
             </Alert>
           ) : null}
-          <GoogleSignInButton {...(next ? { next } : {})} />
+          <ExternalSignInButtons {...(next ? { next } : {})} />
           <LoginForm onSignedIn={redirect} />
         </div>
       </Card>

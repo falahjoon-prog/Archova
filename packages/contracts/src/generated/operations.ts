@@ -13,6 +13,14 @@ export const GoogleSignInCallbackQuery = z.object({
   "state": z.string().max(512).optional(),
   "error": z.string().max(200).optional(),
 });
+export const MicrosoftSignInStartQuery = z.object({
+  "next": z.string().max(2000).optional(),
+});
+export const MicrosoftSignInCallbackQuery = z.object({
+  "code": z.string().max(2000).optional(),
+  "state": z.string().max(512).optional(),
+  "error": z.string().max(200).optional(),
+});
 export const ListApiTokensParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5384,6 +5392,30 @@ export const operations = {
     contentType: null,
     params: null,
     query: GoogleSignInCallbackQuery,
+    body: null,
+  },
+  microsoftSignInStart: {
+    method: 'GET',
+    path: '/v1/auth/microsoft/start',
+    module: "identity",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: MicrosoftSignInStartQuery,
+    body: null,
+  },
+  microsoftSignInCallback: {
+    method: 'GET',
+    path: '/v1/auth/microsoft/callback',
+    module: "identity",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: MicrosoftSignInCallbackQuery,
     body: null,
   },
   logout: {
