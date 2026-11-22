@@ -45,7 +45,9 @@ import {
   CorrespondenceIcon,
   AdminIcon,
   type LucideIcon,
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   ChevronRight,
   AlertTriangle,
 } from '@archova/ui/icons';
@@ -512,6 +514,8 @@ function ShellFrame({
       /* storage blocked: stays open */
     }
   }, []);
+  // Phone and tablet: the tool list is a disclosure, closed so the project's own content comes first.
+  const [menuOpen, setMenuOpen] = useState(false);
   const toggle = () => {
     setCollapsed((c) => {
       try {
@@ -523,8 +527,21 @@ function ShellFrame({
     });
   };
   return (
-    <div className="project-shell" data-collapsed={collapsed}>
+    <div className="project-shell" data-collapsed={collapsed} data-menu-open={menuOpen}>
       <div className="project-shell__side">
+        <button
+          type="button"
+          className="project-shell__menu-toggle ac-focusable"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          Project tools
+          {menuOpen ? (
+            <ChevronUp size={18} strokeWidth={1.5} aria-hidden="true" />
+          ) : (
+            <ChevronDown size={18} strokeWidth={1.5} aria-hidden="true" />
+          )}
+        </button>
         <ProjectNav projectName={projectName} groups={groups} favouritesScope={favouritesScope} />
         <button
           type="button"

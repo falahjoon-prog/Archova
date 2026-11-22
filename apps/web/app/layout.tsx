@@ -19,15 +19,20 @@ export const metadata: Metadata = {
   },
 };
 
+/** Applies a saved Light or Dark choice before first paint. With nothing saved the page follows the system setting. */
+const THEME_INIT =
+  "try{var t=localStorage.getItem('archova-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}";
+
 export const viewport: Viewport = {
-  colorScheme: 'light',
+  colorScheme: 'light dark',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en-AU" data-theme="light">
+    <html lang="en-AU" suppressHydrationWarning>
       <head>
         <ThemeStyle />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
         <Providers>{children}</Providers>
