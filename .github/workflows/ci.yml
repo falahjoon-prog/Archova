@@ -128,7 +128,7 @@ jobs:
         with:
           turbo-cache-key: build
       # Next.js keeps its compiler cache outside the turbo outputs; restoring it makes an unchanged app build fast.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: apps/web/.next/cache
           key: next-${{ github.sha }}
