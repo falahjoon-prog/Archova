@@ -22,11 +22,11 @@ services:
           name: archova-cache
           property: connectionString
       - key: API_APP_ORIGINS
-        sync: false # https://<the vercel domain>
+        value: https://archova-web.onrender.com
       - key: API_PUBLIC_HOSTS
-        sync: false # <the vercel domain>
+        value: archova-web.onrender.com
       - key: API_WEB_SIGN_IN_URL
-        sync: false # https://<the vercel domain>/login
+        value: https://archova-web.onrender.com/login
       - key: API_TRUST_PROXY
         value: 'true'
       - key: API_FILES_STORE
