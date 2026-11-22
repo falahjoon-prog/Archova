@@ -199,13 +199,15 @@ export function createGoogleSignInService(
         if (existing) {
           if (existing.status !== 'active') throw new GoogleSignInError('account_disabled');
           userId = existing.id;
-          // Anything beyond a password (a second factor, a passkey) must not be bypassed by a Google sign-in:
-          // the person signs in the usual way and links Google from their account instead.
+          // Anything beyond a password (a second factor, a passkey) on a verified account must not be bypassed by a
+          // Google sign-in: the person signs in the usual way and links Google from their account instead.
           const creds = await tx
             .select({ type: credentials.type })
             .from(credentials)
             .where(eq(credentials.userId, userId));
-          if (creds.some((c) => c.type !== 'password'))
+          // Only for an account whose address was proven: on an unverified one a factor may have been added by the
+          // squatter, and the takeover below removes it.
+          if (existing.emailVerifiedAt && creds.some((c) => c.type !== 'password'))
             throw new GoogleSignInError('link_requires_sign_in');
           if (!existing.emailVerifiedAt) {
             // Sign-up does not verify addresses, so someone else may have registered this one. Google has just proved
@@ -268,6 +270,8 @@ export function createGoogleSignInService(
         userId,
         client: 'web',
         authMethod: 'google',
+        // Not earlier than the cut-off written above, or the new session would count as one the cut-off ended.
+        authTime: now,
         ip: meta.ip,
         userAgent: meta.userAgent,
         withCookieToken: true,
@@ -284,9 +288,13 @@ export function createGoogleSignInService(
     input: { code: string; state: string; flow: GoogleFlowState | null },
     meta: RequestMeta,
   ) {
+    // Nothing is written for a callback that never began here (no cookie, wrong state): anyone can send those, and the
+    // log is append-only. Only failures after the flow was validated are recorded.
+    const validated = input.flow !== null && safeEqual(input.flow.state, input.state);
     try {
       return await complete(input, meta);
     } catch (e) {
+      if (!validated) throw e;
       const reason = e instanceof GoogleSignInError ? e.reason : 'error';
       await database
         .withGlobalTx('identity', (tx) =>
@@ -296,7 +304,8 @@ export function createGoogleSignInService(
             actorType: 'anonymous',
             actorId: null,
             targetType: 'account',
-            targetId: null,
+            // A constant, so the per-target cap on failed sign-ins applies.
+            targetId: 'google',
             ip: meta.ip,
             userAgent: meta.userAgent,
             client: 'web',

@@ -142,13 +142,34 @@ describe('Continue with Google', () => {
     expect(login.statusCode).toBe(200);
   });
 
-  it('refuses to link an account that has a second factor, and logs the refusal', async () => {
+  it('takes over an unverified account even if a second factor was added to it', async () => {
+    const email = uniqueEmail('google-squat-mfa');
+    const { userId } = await signUpReturningId(email);
+    await t.adminDb.withGlobalTx('identity', (tx) =>
+      tx.execute(
+        sql`insert into identity.credentials (id, user_id, type) values (gen_random_uuid(), ${userId}, 'totp')`,
+      ),
+    );
+    const res = await signInWithGoogle(new Browser(t.app), { sub: `sub-${email}`, email });
+    expect(res.headers.location).toBe(`${APP_ORIGIN}/orgs`);
+    const left = await t.adminDb.withGlobalTx('identity', (tx) =>
+      tx.execute<{ n: number }>(
+        sql`select count(*)::int as n from identity.credentials where user_id = ${userId}`,
+      ),
+    );
+    expect(left.rows[0]!.n).toBe(0);
+  });
+
+  it('refuses to link a verified account that has a second factor, and logs the refusal', async () => {
     const email = uniqueEmail('google-mfa');
     const { userId } = await signUpReturningId(email);
     await t.adminDb.withGlobalTx('identity', (tx) =>
       tx.execute(
         sql`insert into identity.credentials (id, user_id, type) values (gen_random_uuid(), ${userId}, 'totp')`,
       ),
+    );
+    await t.adminDb.withGlobalTx('identity', (tx) =>
+      tx.execute(sql`update identity.users set email_verified_at = now() where id = ${userId}`),
     );
     const res = await signInWithGoogle(new Browser(t.app), { sub: `sub-${email}`, email });
     expect(String(res.headers.location)).toContain('error=google_link_requires_sign_in');
@@ -158,6 +179,21 @@ describe('Continue with Google', () => {
       password: TEST_PASSWORD,
     });
     expect(login.statusCode).toBe(200);
+  });
+
+  it('writes nothing to the security log for a callback that never began here', async () => {
+    const count = async () =>
+      (
+        await t.adminDb.withGlobalTx('identity', (tx) =>
+          tx.execute<{ n: number }>(
+            sql`select count(*)::int as n from audit.security_events where metadata->>'method' = 'google'`,
+          ),
+        )
+      ).rows[0]!.n;
+    const before = await count();
+    const noCookie = await new Browser(t.app).get('/v1/auth/google/callback?code=abc&state=nope');
+    expect(String(noCookie.headers.location)).toContain('error=google_expired');
+    expect(await count()).toBe(before);
   });
 
   it('answers a malformed token response with a plain failure', async () => {
