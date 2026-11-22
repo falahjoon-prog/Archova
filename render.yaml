@@ -1,0 +1,44 @@
+# Free online test deployment of the api (Render free plan; nearest region is Singapore, so sample data only).
+# The database is Supabase (Sydney); the web app is on Vercel and forwards /v1/* here. Not used for production.
+services:
+  - type: web
+    name: archova-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health/ready
+    envVars:
+      - key: NODE_ENV
+        value: development # local signing key, fake Nova, no scanner (same as the laptop demo)
+      - key: API_PORT
+        value: '10000'
+      - key: API_DATABASE_URL
+        sync: false # postgres://app_rw.<project>:<password>@<supabase pooler>:5432/postgres?sslmode=require
+      - key: API_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: archova-cache
+          property: connectionString
+      - key: API_APP_ORIGINS
+        sync: false # https://<the vercel domain>
+      - key: API_PUBLIC_HOSTS
+        sync: false # <the vercel domain>
+      - key: API_WEB_SIGN_IN_URL
+        sync: false # https://<the vercel domain>/login
+      - key: API_TRUST_PROXY
+        value: 'true'
+      - key: API_FILES_STORE
+        value: memory
+      - key: API_AI_PROVIDER
+        value: fake
+      - key: API_MESSAGES
+        value: log
+      - key: LOG_LEVEL
+        value: info
+keyvalues:
+  - name: archova-cache
+    plan: free
+    region: singapore
+    ipAllowList: []
