@@ -2,11 +2,14 @@
 
 import Link from 'next/link';
 import { webRoutes } from '@archova/routes';
-import { Card, PageHeader } from '@archova/ui';
+import { Alert, Card, PageHeader } from '@archova/ui';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { googleErrorMessage } from '../lib/google-errors';
 import { LoginForm } from '../forms/LoginForm';
 import { useRedirectAfterSignIn } from '../hooks/useRedirectAfterSignIn';
 
-export function LoginScreen({ next }: { next?: string }) {
+export function LoginScreen({ next, error }: { next?: string; error?: string }) {
+  const googleError = googleErrorMessage(error);
   const redirect = useRedirectAfterSignIn(next);
   const signupHref = next
     ? `${webRoutes.signup()}?next=${encodeURIComponent(next)}`
@@ -18,7 +21,15 @@ export function LoginScreen({ next }: { next?: string }) {
         description="Use your Archova account to open your organisation."
       />
       <Card>
-        <LoginForm onSignedIn={redirect} />
+        <div className="stack">
+          {googleError ? (
+            <Alert tone="danger" title="We couldn't sign you in with Google">
+              {googleError}
+            </Alert>
+          ) : null}
+          <GoogleSignInButton {...(next ? { next } : {})} />
+          <LoginForm onSignedIn={redirect} />
+        </div>
       </Card>
       <p className="u-center">
         New to Archova?{' '}

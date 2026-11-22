@@ -167,3 +167,13 @@ export const appTokens = identity.table('app_tokens', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const externalIdentities = identity.table('external_identities', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull(),
+  provider: text('provider').$type<'google'>().notNull(),
+  subject: text('subject').notNull(),
+  email: citext('email').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+});

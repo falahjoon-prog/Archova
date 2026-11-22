@@ -5031,3 +5031,13 @@ fieldset.worker-card > legend {
   height: 100%;
   object-fit: cover;
 }
+
+/* "Continue with Google" on the sign-in and sign-up pages: a link that looks like a full-width secondary button. */
+.auth-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-decoration: none;
+}

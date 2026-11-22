@@ -5,6 +5,14 @@ import * as s from './schemas';
 
 export const SignupBody = s.SignupRequestSchema;
 export const LoginBody = s.LoginRequestSchema;
+export const GoogleSignInStartQuery = z.object({
+  "next": z.string().max(2000).optional(),
+});
+export const GoogleSignInCallbackQuery = z.object({
+  "code": z.string().max(2000).optional(),
+  "state": z.string().max(512).optional(),
+  "error": z.string().max(200).optional(),
+});
 export const ListApiTokensParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5341,6 +5349,42 @@ export const operations = {
     params: null,
     query: null,
     body: LoginBody,
+  },
+  getAuthProviders: {
+    method: 'GET',
+    path: '/v1/auth/providers',
+    module: "identity",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  googleSignInStart: {
+    method: 'GET',
+    path: '/v1/auth/google/start',
+    module: "identity",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: GoogleSignInStartQuery,
+    body: null,
+  },
+  googleSignInCallback: {
+    method: 'GET',
+    path: '/v1/auth/google/callback',
+    module: "identity",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: GoogleSignInCallbackQuery,
+    body: null,
   },
   logout: {
     method: 'POST',
