@@ -82,7 +82,7 @@ export function MemberList({
         </p>
       ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table table--stacked">
             <caption className="u-visually-hidden">Project members</caption>
             <thead>
               <tr>
@@ -107,20 +107,22 @@ export function MemberList({
                     {m.name}
                     {m.isExternal ? <span className="tag">External</span> : null}
                   </th>
-                  <td>{m.jobTitle ?? '—'}</td>
-                  <td>{companyNames.get(m.companyId) ?? '—'}</td>
-                  <td>{m.trade ?? '—'}</td>
-                  <td>
+                  <td data-label="Title">{m.jobTitle ?? '—'}</td>
+                  <td data-label="Company">{companyNames.get(m.companyId) ?? '—'}</td>
+                  <td data-label="Trade">{m.trade ?? '—'}</td>
+                  <td data-label="Phone">
                     {m.phone ? (
                       <a href={`tel:${m.phone.replace(/[^+\d]/g, '')}`}>{m.phone}</a>
                     ) : (
                       '—'
                     )}
                   </td>
-                  <td>{m.email}</td>
-                  <td>{templateNames.get(m.permissionTemplateId) ?? '—'}</td>
+                  <td data-label="Email">{m.email}</td>
+                  <td data-label="Permissions">
+                    {templateNames.get(m.permissionTemplateId) ?? '—'}
+                  </td>
                   {edit ? (
-                    <td>
+                    <td data-label="">
                       <Button variant="tertiary" size="sm" onClick={() => setEditing(m)}>
                         Edit<span className="u-visually-hidden"> {m.name}</span>
                       </Button>

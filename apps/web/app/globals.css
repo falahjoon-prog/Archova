@@ -664,6 +664,47 @@ button.inbox-link {
 .table tbody th {
   font-weight: 500;
 }
+/* Phone and tablet: each row becomes a card of label and value pairs, so nothing scrolls sideways. */
+@media (max-width: 900px) {
+  .table--stacked,
+  .table--stacked tbody,
+  .table--stacked tr,
+  .table--stacked th,
+  .table--stacked td {
+    display: block;
+  }
+  .table--stacked thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .table--stacked tbody tr {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--c-border-divider);
+  }
+  .table--stacked th,
+  .table--stacked td {
+    padding: var(--space-1) 0;
+    border-bottom: 0;
+    overflow-wrap: anywhere;
+  }
+  .table--stacked tbody th {
+    font-weight: 600;
+  }
+  .table--stacked td[data-label]:not([data-label='']) {
+    display: grid;
+    grid-template-columns: minmax(88px, 30%) minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+  .table--stacked td[data-label]:not([data-label=''])::before {
+    content: attr(data-label);
+    font-size: var(--font-xs);
+    font-weight: 500;
+    color: var(--c-text-secondary);
+  }
+}
 .tag {
   display: inline-block;
   margin-left: var(--space-2);
