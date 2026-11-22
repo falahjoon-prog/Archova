@@ -17,6 +17,10 @@ export const ADJUDICATION_OUTCOMES: readonly AdjudicationOutcome[] = [
 export interface AdjudicationFacts {
   noticeServedOn: LocalDate | null;
   applicationLodgedOn: LocalDate | null;
+  /** The day the respondent received the application. Starts the response clock. */
+  applicationReceivedOn: LocalDate | null;
+  /** The day the respondent received notice of the adjudicator's acceptance. */
+  acceptanceNoticeReceivedOn: LocalDate | null;
   nominatingAuthority: string | null;
   adjudicatorName: string | null;
   adjudicatorAppointedOn: LocalDate | null;
@@ -33,6 +37,8 @@ export interface AdjudicationFacts {
 export const EMPTY_ADJUDICATION: AdjudicationFacts = {
   noticeServedOn: null,
   applicationLodgedOn: null,
+  applicationReceivedOn: null,
+  acceptanceNoticeReceivedOn: null,
   nominatingAuthority: null,
   adjudicatorName: null,
   adjudicatorAppointedOn: null,
@@ -56,6 +62,16 @@ const ORDER: [keyof AdjudicationFacts, keyof AdjudicationFacts, string][] = [
     'applicationLodgedOn',
     'noticeServedOn',
     'The application can’t be lodged before the notice was served.',
+  ],
+  [
+    'applicationReceivedOn',
+    'applicationLodgedOn',
+    'The application can’t be received before it was lodged.',
+  ],
+  [
+    'acceptanceNoticeReceivedOn',
+    'applicationReceivedOn',
+    'The acceptance notice can’t arrive before the application was received.',
   ],
   [
     'adjudicatorAppointedOn',
@@ -91,6 +107,8 @@ export function validateAdjudication(
   const happened: (keyof AdjudicationFacts)[] = [
     'noticeServedOn',
     'applicationLodgedOn',
+    'applicationReceivedOn',
+    'acceptanceNoticeReceivedOn',
     'adjudicatorAppointedOn',
     'responseLodgedOn',
     'determinedOn',

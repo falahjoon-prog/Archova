@@ -12,6 +12,7 @@ import { customerRoutes, internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createHoldService } from './application/holds';
 import { createFlagService } from './application/flags';
+import { createProductUpdateService } from './application/product-updates';
 import { createOrgActionService, type OrgActionDeps } from './application/org-actions';
 import {
   createSupportAccessService,
@@ -96,10 +97,14 @@ export function createBackofficeModule(
     requireHardwareKey: deps.config.requireSupportHardwareKey ?? !deps.config.localLogin,
   });
   const flags = createFlagService({ database: services.database, staff });
+  const productUpdates = createProductUpdateService({
+    database: services.database,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   return {
     definition: defineModule({ name: 'backoffice' }),
     /** /internal/v1 is mounted by apps/api from `internal`; the only customer route is the org's own flag set. */
-    routes: customerRoutes({ flags }),
+    routes: customerRoutes({ flags, productUpdates }),
     internal: internalRoutes({
       staff,
       requests,
@@ -109,6 +114,7 @@ export function createBackofficeModule(
       orgActions,
       support,
       holds,
+      productUpdates,
     }),
     api: {
       /** The staff session behind a console cookie; null when absent, expired or revoked. */

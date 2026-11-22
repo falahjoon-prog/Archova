@@ -15,6 +15,7 @@ const NAV = [
   { href: '/plans', label: 'Plans', permission: 'backoffice.pricing.read' },
   { href: '/pricing', label: 'Price book', permission: 'backoffice.pricing.read' },
   { href: '/flags', label: 'Flags and pilots', permission: 'backoffice.flags.read' },
+  { href: '/updates', label: 'Product updates', permission: 'backoffice.updates.manage' },
   { href: '/approvals', label: 'Approvals', permission: 'backoffice.requests.read' },
   { href: '/staff', label: 'Staff', permission: 'backoffice.staff.read' },
 ] as const;

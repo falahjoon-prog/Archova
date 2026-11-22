@@ -635,6 +635,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PublicPriceBook' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/public/product-updates:
+    get:
+      operationId: listPublicProductUpdates
+      tags: [platform]
+      x-module: platform
+      x-auth: none
+      summary: Published product updates (release notes and notices), newest first.
+      description: |
+        Written by the Archova owner in the console. Only published updates appear, never drafts or archived ones.
+        The website changelog and the in-app banner both read this.
+      responses:
+        '200':
+          description: Published updates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicProductUpdates' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/entitlements:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -27664,6 +27681,23 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/PlantFlag' }
+    PublicProductUpdates:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, title, summary, body, kind, banner, publishedAt]
+            properties:
+              id: { type: string, format: uuid }
+              title: { type: string }
+              summary: { type: string }
+              body: { type: string, description: Plain text; blank lines separate paragraphs. }
+              kind: { type: string, enum: [feature, improvement, fix, notice] }
+              banner: { type: boolean, description: Also shown as a dismissible banner in the app. }
+              publishedAt: { type: string, format: date-time }
     FeatureFlags:
       type: object
       required: [orgId, flags]
@@ -36561,6 +36595,13 @@ components:
           { type: [string, 'null'], format: date, description: The deadline, if the step has one. }
         doneOn:
           { type: [string, 'null'], format: date, description: The day it happened, if it has. }
+        suggestedOn:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: A date worked out from the rules,
+            shown beside one typed from a notice and never instead of it. Only for states whose rules a lawyer has signed off.,
+          }
         status: { type: string, enum: [done, upcoming, due_soon, overdue, closed] }
         note: { type: [string, 'null'] }
     ClaimStatement:
@@ -36578,6 +36619,8 @@ components:
         [
           noticeServedOn,
           applicationLodgedOn,
+          applicationReceivedOn,
+          acceptanceNoticeReceivedOn,
           nominatingAuthority,
           adjudicatorName,
           adjudicatorAppointedOn,
@@ -36588,11 +36631,14 @@ components:
           adjudicatedAmount,
           outcome,
           notes,
+          version,
           updatedAt,
         ]
       properties:
         noticeServedOn: { type: [string, 'null'], format: date }
         applicationLodgedOn: { type: [string, 'null'], format: date }
+        applicationReceivedOn: { type: [string, 'null'], format: date }
+        acceptanceNoticeReceivedOn: { type: [string, 'null'], format: date }
         nominatingAuthority: { type: [string, 'null'], maxLength: 200 }
         adjudicatorName: { type: [string, 'null'], maxLength: 200 }
         adjudicatorAppointedOn: { type: [string, 'null'], format: date }
@@ -36627,6 +36673,8 @@ components:
           }
         noticeServedOn: { type: [string, 'null'], format: date }
         applicationLodgedOn: { type: [string, 'null'], format: date }
+        applicationReceivedOn: { type: [string, 'null'], format: date }
+        acceptanceNoticeReceivedOn: { type: [string, 'null'], format: date }
         nominatingAuthority: { type: [string, 'null'], maxLength: 200 }
         adjudicatorName: { type: [string, 'null'], maxLength: 200 }
         adjudicatorAppointedOn: { type: [string, 'null'], format: date }

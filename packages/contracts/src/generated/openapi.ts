@@ -510,6 +510,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/product-updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Published product updates (release notes and notices), newest first.
+         * @description Written by the Archova owner in the console. Only published updates appear, never drafts or archived ones.
+         *     The website changelog and the in-app banner both read this.
+         */
+        get: operations["listPublicProductUpdates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/entitlements": {
         parameters: {
             query?: never;
@@ -19536,6 +19557,22 @@ export interface components {
         PlantFlagList: {
             data: components["schemas"]["PlantFlag"][];
         };
+        PublicProductUpdates: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                summary: string;
+                /** @description Plain text; blank lines separate paragraphs. */
+                body: string;
+                /** @enum {string} */
+                kind: "feature" | "improvement" | "fix" | "notice";
+                /** @description Also shown as a dismissible banner in the app. */
+                banner: boolean;
+                /** Format: date-time */
+                publishedAt: string;
+            }[];
+        };
         FeatureFlags: {
             orgId: string;
             flags: {
@@ -25026,6 +25063,11 @@ export interface components {
              * @description The day it happened
              */
             doneOn: string | null;
+            /**
+             * Format: date
+             * @description A date worked out from the rules
+             */
+            suggestedOn?: string | null;
             /** @enum {string} */
             status: "done" | "upcoming" | "due_soon" | "overdue" | "closed";
             note: string | null;
@@ -25046,6 +25088,10 @@ export interface components {
             noticeServedOn: string | null;
             /** Format: date */
             applicationLodgedOn: string | null;
+            /** Format: date */
+            applicationReceivedOn: string | null;
+            /** Format: date */
+            acceptanceNoticeReceivedOn: string | null;
             nominatingAuthority: string | null;
             adjudicatorName: string | null;
             /** Format: date */
@@ -25063,7 +25109,7 @@ export interface components {
             outcome: "upheld" | "part_upheld" | "dismissed" | "withdrawn" | "settled" | null;
             notes: string | null;
             /** @description Send this back as `expectedVersion` when changing the record. */
-            version?: number;
+            version: number;
             /** Format: date-time */
             updatedAt: string;
         };
@@ -25074,6 +25120,10 @@ export interface components {
             noticeServedOn?: string | null;
             /** Format: date */
             applicationLodgedOn?: string | null;
+            /** Format: date */
+            applicationReceivedOn?: string | null;
+            /** Format: date */
+            acceptanceNoticeReceivedOn?: string | null;
             nominatingAuthority?: string | null;
             adjudicatorName?: string | null;
             /** Format: date */
@@ -30802,6 +30852,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicPriceBook"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPublicProductUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published updates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProductUpdates"];
                 };
             };
             default: components["responses"]["Problem"];

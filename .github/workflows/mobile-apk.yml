@@ -1,5 +1,5 @@
 # Installable Android test build (no Expo account needed). Runs on John's PC runner when CI_RUNNER is set. Run it by hand from the Actions tab; the APK is the
-# "archova-android-apk" artifact on the run page. Signed with the debug key, so it is for testing only, never a store
+# "archova-android-apk" artifact on the run page, and is also published to the "android-test-latest" release that the website's Get the app page links to. Signed with the debug key, so it is for testing only, never a store
 # upload. The API and web addresses default to the demo tunnel; enter new ones if the tunnel restarted.
 name: Mobile APK
 
@@ -14,7 +14,7 @@ on:
         default: https://tamil-acquisitions-frontpage-biography.trycloudflare.com
 
 permissions:
-  contents: read
+  contents: write # publishes the APK to the android-test-latest release
 
 jobs:
   apk:
@@ -51,3 +51,14 @@ jobs:
           name: archova-android-apk
           path: apps/mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+      # Stable download link for the website: one pre-release whose single asset is replaced on every run.
+      - name: Publish to the android-test-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk=$(ls apps/mobile/android/app/build/outputs/apk/release/*.apk | head -n1)
+          cp "$apk" archova-android-test.apk
+          gh release view android-test-latest >/dev/null 2>&1 || gh release create android-test-latest \
+            --prerelease --title "Android test build" \
+            --notes "Latest Android test build (debug-signed, not a store release). Replaced by each Mobile APK run."
+          gh release upload android-test-latest archova-android-test.apk --clobber

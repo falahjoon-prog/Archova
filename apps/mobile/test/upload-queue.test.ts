@@ -12,6 +12,7 @@ import { nodeSqlDriver } from './support/node-sql';
 
 // The screen needs React Native; these tests cover the command and the queue only.
 vi.mock('../features/photos/screens/CaptureScreen', () => ({ CaptureScreen: () => null }));
+vi.mock('../features/photos/screens/PhotosScreen', () => ({ PhotosScreen: () => null }));
 
 const T0 = Date.parse('2026-10-02T23:30:00.000Z');
 

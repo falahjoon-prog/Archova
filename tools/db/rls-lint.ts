@@ -43,6 +43,7 @@ export const GLOBAL_TABLES = new Set([
   'backoffice.flags',
   'backoffice.flag_targets',
   'backoffice.flag_changes',
+  'backoffice.product_updates',
   'backoffice.org_actions',
   'backoffice.support_grants',
   'backoffice.support_sessions',
