@@ -11,3 +11,4 @@ export * from './links';
 export * from './site-capture';
 export * from './site-access';
 export * from './injury';
+export * from './induction-text';

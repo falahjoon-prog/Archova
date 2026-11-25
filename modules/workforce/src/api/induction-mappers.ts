@@ -1,4 +1,4 @@
-import { decodeId, encodeId } from '@archova/domain';
+import { INDUCTION_FIXED_TEXT, decodeId, encodeId } from '@archova/domain';
 import type {
   Induction,
   InductionCompletion,
@@ -9,7 +9,6 @@ import type {
   WorkerCredential,
 } from '@archova/contracts';
 import { AppError } from '@archova/kernel';
-import { INDUCTION_FIXED_TEXT } from '@archova/mod-ai';
 import type { Viewer } from '../application/attendance';
 import type {
   CompletionView,

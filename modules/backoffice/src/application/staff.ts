@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { hash, verify, type Algorithm } from '@node-rs/argon2';
+import { createRequire } from 'node:module';
+import type * as Argon2 from '@node-rs/argon2';
+import type { Algorithm } from '@node-rs/argon2';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { STAFF_ROLES, type StaffDto, type StaffRole } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
@@ -16,9 +18,16 @@ const FAILURE_WINDOW_MS = 15 * 60_000;
 // Argon2id like customer passwords (security-licensing/01 §4); 2 is Argon2id.
 const ARGON2ID = 2 as Algorithm;
 const OPTIONS = { algorithm: ARGON2ID, memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
-export const hashStaffPassword = (password: string) => hash(password, OPTIONS);
-const verifyStaffPassword = (stored: string, password: string) =>
-  verify(stored, password).catch(() => false);
+// Loaded on first use through `createRequire`, which the bundler leaves alone: the worker bundles this module for its
+// trial jobs, and its image carries no argon2, so a static import would crash it at start (apps/worker ai-routing
+// test). The api image has it.
+const requireModule = createRequire(import.meta.url);
+const argon2 = () => requireModule('@node-rs/argon2') as typeof Argon2;
+export const hashStaffPassword = async (password: string) => argon2().hash(password, OPTIONS);
+const verifyStaffPassword = async (stored: string, password: string) =>
+  argon2()
+    .verify(stored, password)
+    .catch(() => false);
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest();
 

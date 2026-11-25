@@ -3,9 +3,8 @@
 // the gate rule that reads them (G2, G3).
 import { randomBytes } from 'node:crypto';
 import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
-import { uuidv7 } from '@archova/domain';
+import { INDUCTION_FIXED_TEXT, uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
-import { INDUCTION_FIXED_TEXT } from '@archova/mod-ai';
 import { endOfLocalDay, localDateOf, startOfLocalDay, type LocalDate } from '@archova/time';
 import type { EligibilityReason } from '../domain/attendance';
 import type { NumberVault } from '../domain/number-vault';
