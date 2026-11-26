@@ -7,6 +7,7 @@ import {
   type InductionSection,
   type PromptPassage,
 } from '@archova/ai-prompts';
+import { INDUCTION_FIXED_TEXT } from '@archova/domain';
 import { checkCitations, normaliseForMatch, type CheckedCitation } from './citations';
 
 /** What retrieval searches for, per section; written the way site documents phrase it. */
@@ -41,20 +42,6 @@ const ALWAYS_CRITICAL: ReadonlySet<InductionSection> = new Set([
   'emergencies_and_first_aid',
   'high_risk_work_and_permits',
 ]);
-
-/**
- * Fixed text from the reference table (compliance/08 §1.2: statutory and declaration wording never comes from the
- * model). Version 1 is Grace's draft in compliance/04 §2; the lawyer review (⚖) may change it, which bumps the
- * version recorded on each draft.
- */
-export const INDUCTION_FIXED_TEXT = {
-  version: 1,
-  declaration:
-    'I declare that the white card details I have given are true, that I have understood this induction, that I am fit for work and not impaired by fatigue, alcohol or drugs, and that I will follow the site rules.',
-  swmsAwareness:
-    "High-risk construction work needs an accepted SWMS before it starts. Opening a SWMS here doesn't replace signing on to it before you start the task.",
-  disclaimer: 'Drafted by Nova from your project records. Check it before you use it.',
-} as const;
 
 /** compliance/08 §1.5. */
 const BANNED = /\b(compliant|compliance|verified|valid|guaranteed|legally)\b/i;
@@ -223,3 +210,5 @@ function reviewSections(
 
   return { sections, quiz, warnings };
 }
+
+export { INDUCTION_FIXED_TEXT };

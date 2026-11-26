@@ -1,16 +1,18 @@
 import { buildRegistry, FOUNDATION_PERMISSIONS } from '@archova/domain/permissions';
-import { MODULE_PERMISSIONS } from '@archova/compose';
 import { createAccessService } from '@archova/mod-access';
-import { postPlantCost } from '@archova/mod-financials';
-import { PLANT_TIME_ZONE, postHireCosts } from '@archova/mod-plant';
+import { FINANCIALS_PERMISSIONS, postPlantCost } from '@archova/mod-financials';
+import { PLANT_PERMISSIONS, PLANT_TIME_ZONE, postHireCosts } from '@archova/mod-plant';
 import { lookupProjectMembership } from '@archova/mod-platform';
 import { localDateOf } from '@archova/time';
 import { jobContext } from '../subscribers';
 import type { TenantJob } from '../scheduler';
 
-/** Permission checks the way the API makes them, so the job asks the same question the allocation did. */
+/**
+ * Permission checks the way the API makes them, so the job asks the same question the allocation did. Only the keys
+ * this job checks are registered: `@archova/compose` would pull every module (pdf.js, argon2) into the worker image.
+ */
 const access = createAccessService({
-  registry: buildRegistry(FOUNDATION_PERMISSIONS, ...MODULE_PERMISSIONS),
+  registry: buildRegistry(FOUNDATION_PERMISSIONS, PLANT_PERMISSIONS, FINANCIALS_PERMISSIONS),
   lookupProjectMember: lookupProjectMembership,
 });
 
