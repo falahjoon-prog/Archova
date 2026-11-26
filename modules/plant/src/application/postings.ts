@@ -1,4 +1,5 @@
 import { and, eq, isNotNull } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { recordRetention } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { uuidv7 } from '@archova/domain';
@@ -34,21 +35,24 @@ export async function postHireCosts(
   access: AccessService,
 ): Promise<{ posted: number; waiting: number; skipped: number }> {
   // skip locked: a run that overlaps another leaves the rows the other holds, so nothing is posted twice.
+  // The alias matters: `for update of` must name the bare table, and drizzle writes a schema-qualified name for a
+  // plain table, which Postgres rejects.
+  const locked = alias(allocations, 'allocations');
   const rows = await scope.tx
-    .select({ a: allocations, asset: assets })
-    .from(allocations)
-    .innerJoin(assets, eq(assets.id, allocations.assetId))
+    .select({ a: locked, asset: assets })
+    .from(locked)
+    .innerJoin(assets, eq(assets.id, locked.assetId))
     .where(
       and(
-        eq(allocations.status, 'active'),
-        isNotNull(allocations.costCodeId),
-        isNotNull(allocations.createdBy),
+        eq(locked.status, 'active'),
+        isNotNull(locked.costCodeId),
+        isNotNull(locked.createdBy),
         eq(assets.ownership, 'hired'),
         isNotNull(assets.dailyRateCents),
       ),
     )
     .limit(2000)
-    .for('update', { of: allocations, skipLocked: true });
+    .for('update', { of: locked, skipLocked: true });
   let posted = 0;
   let waiting = 0;
   let skipped = 0;

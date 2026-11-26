@@ -77,8 +77,9 @@ describe('plant and equipment', () => {
     const util = (
       await ana.browser.get(`${base}/utilisation?from=2026-12-01&to=2026-12-10`)
     ).json() as { fleetPct: number; assets: Array<{ bookedDays: number; costCents: number }> };
-    expect(util.assets[0]).toMatchObject({ bookedDays: 3, costCents: 3 * 45000 });
-    expect(util.fleetPct).toBe(30);
+    // 5 Dec once, plus 6 to 8 Dec: four booked days of ten.
+    expect(util.assets[0]).toMatchObject({ bookedDays: 4, costCents: 4 * 45000 });
+    expect(util.fleetPct).toBe(40);
 
     // Maintenance: a recurring plan moves on from the day it was done; a one-off finishes.
     const plan = (
@@ -179,11 +180,19 @@ describe('plant and equipment', () => {
       ).json() as { id: string };
     const hired = await mk('CR-H', 'hired');
     const owned = await mk('CR-O', 'owned');
+    // A costed allocation may only start within the last 31 days, so the dates move with the clock.
+    const dayOffset = (n: number) =>
+      new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+    const [hireStart, hireEnd, hireNext] = [
+      dayOffset(-14),
+      dayOffset(-10),
+      dayOffset(-13),
+    ] as const;
     const alloc = async (assetId: string, costCodeId: string | null) =>
       ana.browser.post(`${base}/assets/${assetId}/allocations`, {
         projectId: project.id,
-        startsOn: '2026-01-05',
-        endsOn: '2026-01-09',
+        startsOn: hireStart,
+        endsOn: hireEnd,
         ...(costCodeId ? { costCodeId } : {}),
       });
     expect((await alloc(hired.id, code.id)).statusCode).toBe(201);
@@ -192,12 +201,13 @@ describe('plant and equipment', () => {
       `${base}/assets/${(await mk('CR-N', 'hired')).id}/allocations`,
       {
         projectId: project.id,
-        startsOn: '2026-01-05',
-        endsOn: '2026-01-06',
+        startsOn: hireStart,
+        endsOn: hireNext,
         costCodeId: noLineCode.id,
       },
     );
-    expect(noLine.statusCode).toBe(201);
+    // A code with no budget line on this project is refused up front, so nothing can wait for one.
+    expect(noLine.statusCode).toBe(422);
 
     // A costed allocation must stay inside the project's own budget and inside a sane date range.
     const other = await createProject(ana.browser, org.id);
@@ -233,16 +243,15 @@ describe('plant and equipment', () => {
         },
         (scope) => t.modules.plant.api.postHireCosts(scope),
       );
-    // Five days of the hired crane at $500: $2,500 on the budget line. The owned machine and the code with no
-    // budget line post nothing, and the unbudgeted hire waits.
-    expect(await run()).toEqual({ posted: 1, waiting: 1, skipped: 0 });
+    // Five days of the hired crane at $500: $2,500 on the budget line. The owned machine posts nothing.
+    expect(await run()).toEqual({ posted: 1, waiting: 0, skipped: 0 });
     expect(await actualOf()).toBe('2500.00');
-    expect(await run()).toEqual({ posted: 0, waiting: 1, skipped: 0 });
+    expect(await run()).toEqual({ posted: 0, waiting: 0, skipped: 0 });
     expect(await actualOf()).toBe('2500.00');
     const list = (await ana.browser.get(`${base}/allocations`)).json() as {
       data: Array<{ assetId: string; postedThrough: string | null }>;
     };
-    expect(list.data.find((a) => a.assetId === hired.id)!.postedThrough).toBe('2026-01-09');
+    expect(list.data.find((a) => a.assetId === hired.id)!.postedThrough).toBe(hireEnd);
     expect(list.data.find((a) => a.assetId === owned.id)!.postedThrough).toBeNull();
   });
 

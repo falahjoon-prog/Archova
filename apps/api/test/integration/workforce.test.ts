@@ -808,7 +808,7 @@ describe('site clearance', () => {
 
     const created = await s.pm.browser.post(`${s.base}/pretask-plans`, {
       taskTitle: 'Form up slab',
-      workDate: new Date().toISOString().slice(0, 10),
+      workDate: today(),
       supervisorName: 'Pat Foreman',
       hazards: [
         { hazard: 'Falls', riskBefore: 'high', controls: 'Edge protection', riskAfter: 'low' },

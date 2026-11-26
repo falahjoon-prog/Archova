@@ -20,8 +20,10 @@ const routeModules = [...new Set(Object.values(operations).map((d) => d.module a
 );
 
 async function published() {
-  const rows = (await t.adminDb.db.execute(sql`
-    select plan_code, version, modules from billing.plan_versions where status = 'published'`)) as unknown as Array<{
+  const rows = (
+    await t.adminDb.db.execute(sql`
+    select plan_code, version, modules from billing.plan_versions where status = 'published'`)
+  ).rows as unknown as Array<{
     plan_code: string;
     version: number;
     modules: string[];
@@ -33,9 +35,11 @@ describe('plan entitlements', () => {
   it('has exactly one published version per plan, and retired history behind it', async () => {
     const live = await published();
     expect([...live.keys()].sort()).toEqual(['business', 'enterprise', 'subcontractor', 'team']);
-    const [retired] = (await t.adminDb.db.execute(
-      sql`select count(*)::int as n from billing.plan_versions where status = 'retired' and plan_code in ('team', 'business', 'enterprise')`,
-    )) as unknown as Array<{ n: number }>;
+    const [retired] = (
+      await t.adminDb.db.execute(
+        sql`select count(*)::int as n from billing.plan_versions where status = 'retired' and plan_code in ('team', 'business', 'enterprise')`,
+      )
+    ).rows as unknown as Array<{ n: number }>;
     expect(retired?.n ?? 0).toBeGreaterThanOrEqual(3);
   });
 
@@ -59,9 +63,11 @@ describe('plan entitlements', () => {
   });
 
   it('never shrinks a plan: each version keeps every module of the one before it', async () => {
-    const rows = (await t.adminDb.db.execute(
-      sql`select plan_code, version, modules from billing.plan_versions order by plan_code, version`,
-    )) as unknown as Array<{ plan_code: string; version: number; modules: string[] }>;
+    const rows = (
+      await t.adminDb.db.execute(
+        sql`select plan_code, version, modules from billing.plan_versions order by plan_code, version`,
+      )
+    ).rows as unknown as Array<{ plan_code: string; version: number; modules: string[] }>;
     const prev = new Map<string, string[]>();
     for (const r of rows) {
       const before = prev.get(r.plan_code);

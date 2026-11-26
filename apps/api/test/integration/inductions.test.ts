@@ -425,11 +425,17 @@ describe('online inductions (product/14)', () => {
     };
     const setExpiry = (daysFromToday: number) =>
       t.adminDb.withTenantTx(ctx, async ({ tx }) => {
-        // A signed completion is sealed; the test ages it directly, the way time would.
-        await tx.execute(sql`set local session_replication_role = replica`);
+        // A signed completion is sealed; the test ages it directly, the way time would. The migrator owns the table
+        // and is not a superuser, so it switches the trigger off for this one transaction instead.
+        await tx.execute(
+          sql`alter table workforce.induction_completions disable trigger induction_completions_sealed`,
+        );
         await tx.execute(sql`update workforce.induction_completions
           set expires_on = (now() at time zone ${TZ})::date + ${daysFromToday}::int
           where id = ${decodeId('inductionCompletion', c.id)!}`);
+        await tx.execute(
+          sql`alter table workforce.induction_completions enable trigger induction_completions_sealed`,
+        );
       });
     await setExpiry(10);
     const soon = (await s.sm.browser.get(`${s.base}/induction-register`)).json().data[0];

@@ -6869,7 +6869,6 @@ export const IncidentAnalyticsSchema = z.object({
   "projectsTruncated": z.boolean(),
   "rowsTruncated": z.boolean(),
   "rows": z.array(IncidentAnalyticsRowSchema),
-  "injury": z.record(z.string(), z.unknown()).optional(),
 });
 export type IncidentAnalytics = z.infer<typeof IncidentAnalyticsSchema>;
 
@@ -6921,6 +6920,7 @@ export const IncidentPersonInputSchema = z.object({
   "personName": z.string().min(1).max(200),
   "companyId": CompanyRefSchema.optional(),
   "role": z.enum(["injured", "witness", "involved"]),
+  "injury": z.record(z.string(), z.unknown()).optional(),
 }).strict();
 export type IncidentPersonInput = z.infer<typeof IncidentPersonInputSchema>;
 

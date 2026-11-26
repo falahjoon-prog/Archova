@@ -23706,13 +23706,6 @@ components:
         projectsTruncated: { type: boolean }
         rowsTruncated: { type: boolean }
         rows: { type: array, items: { $ref: '#/components/schemas/IncidentAnalyticsRow' } }
-        injury:
-          type: object
-          additionalProperties: true
-          description: |
-            Health information. Free-text keys (nature, bodyPart, treatment) are kept as sent. Four keys are checked
-            and feed the injury analytics: bodyArea (a BodyPart), injuryType, harmSource, outcome (InjuryOutcome),
-            and daysLost (0 to 3650, only with the lost_time or fatality outcome).
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -41745,6 +41738,13 @@ components:
         personName: { type: string, minLength: 1, maxLength: 200 }
         companyId: { $ref: '#/components/schemas/CompanyRef' }
         role: { type: string, enum: [injured, witness, involved] }
+        injury:
+          type: object
+          additionalProperties: true
+          description: |
+            Health information. Free-text keys (nature, bodyPart, treatment) are kept as sent. Four keys are checked
+            and feed the injury analytics: bodyArea (a BodyPart), injuryType, harmSource, outcome (InjuryOutcome),
+            and daysLost (0 to 3650, only with the lost_time or fatality outcome).
     IncidentSource:
       type: object
       additionalProperties: false

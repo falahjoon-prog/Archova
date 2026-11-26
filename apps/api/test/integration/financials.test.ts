@@ -1974,6 +1974,33 @@ describe('T&M tickets', () => {
     const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
     const get = (path: string) => s.pm.browser.get(`${s.base}/${path}`);
     const principal = await signUp(t.app, 'fin-tm-super');
+    // T&M tickets are builder staff only: these people are organisation members, not a guest company.
+    const makeStaff = (who: { userId: string }) =>
+      t.adminDb.withTenantTx(
+        {
+          orgId: decodeId('org', s.orgId)!,
+          userId: decodeId('user', who.userId)!,
+          principalType: 'member' as const,
+          orgRole: 'owner' as const,
+          entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+          requestId: 'test',
+        },
+        ({ tx }) =>
+          tx.execute(sql`insert into platform.memberships (id, org_id, user_id, role, status, joined_at)
+                         values (gen_random_uuid(), ${decodeId('org', s.orgId)!}, ${decodeId('user', who.userId)!}, 'member', 'active', now())`),
+      );
+    await makeStaff(principal);
+    // Field verification compares the ticket with timesheets, so the verifier needs to see them (the superintendent cannot).
+    const verifier = await signUp(t.app, 'fin-tm-verify');
+    await makeStaff(verifier);
+    await addMember(
+      s.pm.browser,
+      s.orgId,
+      s.base.split('/').pop()!,
+      verifier.email,
+      'Project Manager',
+      'Builder Staff Co',
+    );
     await addMember(
       s.pm.browser,
       s.orgId,
@@ -2074,7 +2101,7 @@ describe('T&M tickets', () => {
       (await post(`tm-tickets/${t1.id}/review`, { stage: 'field_verified' })).json().code,
     ).toBe('financials.tm_ticket.bad_state');
     // Hand-typed lines are not tied to a timesheet, so there are no differing hours to explain and no note is needed.
-    const verified = await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
+    const verified = await verifier.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
       stage: 'field_verified',
     });
     expect(verified.json()).toMatchObject({ reviewStage: 'field_verified' });
@@ -2088,7 +2115,7 @@ describe('T&M tickets', () => {
       ).json(),
     ).toMatchObject({ reviewStage: 'in_progress' });
     await post(`tm-tickets/${t1.id}/review`, { stage: 'ready_for_review' });
-    await principal.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
+    await verifier.browser.post(`${s.base}/tm-tickets/${t1.id}/review`, {
       stage: 'field_verified',
     });
 
@@ -2115,6 +2142,7 @@ describe('T&M tickets', () => {
           role: 'principal_rep',
           signerName: 'Pat Manager',
           acknowledgementVersion: 'tm-sign-v1',
+          evidenceFileId: docket,
         })
       ).json().code,
     ).toBe('financials.tm_ticket.bad_state');
@@ -2235,6 +2263,10 @@ describe('T&M tickets', () => {
     const contract = (await post('contracts', contractBody())).json().contract;
     const t2 = (await post('tm-tickets', body)).json();
     expect(t2.number).toBe(2);
+    await post(`tm-tickets/${t2.id}/review`, { stage: 'ready_for_review' });
+    await verifier.browser.post(`${s.base}/tm-tickets/${t2.id}/review`, {
+      stage: 'field_verified',
+    });
     await post(`tm-tickets/${t2.id}/sign`, {
       role: 'contractor',
       signerName: 'Pat Manager',
@@ -2244,6 +2276,7 @@ describe('T&M tickets', () => {
       role: 'principal_rep',
       signerName: 'Sam Lee',
       acknowledgementVersion: 'tm-sign-v1',
+      evidenceFileId: docket,
     });
     const asVar = await post(`tm-tickets/${t2.id}/convert`, {
       to: 'variation',
@@ -2262,7 +2295,7 @@ describe('T&M tickets', () => {
 
     const list = (await get('tm-tickets')).json();
     expect(list.data.map((d: { number: number }) => d.number)).toEqual([3, 2, 1]);
-    expect(list.total).toBe('3940.00');
+    expect(list.total).toBe('4072.00');
 
     // Subcontractors see none of it.
     expect((await s.sub.browser.get(`${s.base}/tm-tickets`)).statusCode).toBe(403);
