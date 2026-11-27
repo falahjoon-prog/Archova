@@ -20,7 +20,7 @@
     "@archova/mod-platform": "workspace:*",
     "@archova/mod-rfis": "workspace:*",
     "@archova/mod-files": "workspace:*",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.4"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

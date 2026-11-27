@@ -16,10 +16,10 @@
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@archova/mod-access": "workspace:*",
-    "@aws-sdk/client-s3": "^3.900.0",
-    "@aws-sdk/lib-storage": "^3.1162.0",
-    "@aws-sdk/s3-request-presigner": "^3.900.0",
-    "drizzle-orm": "^0.45.2"
+    "@aws-sdk/client-s3": "^3.1176.0",
+    "@aws-sdk/lib-storage": "^3.1176.0",
+    "@aws-sdk/s3-request-presigner": "^3.1176.0",
+    "drizzle-orm": "^0.45.4"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
